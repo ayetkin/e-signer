@@ -162,6 +162,8 @@ dist/linux_arm64/run.sh
 
 - **PIN asla otomatik olarak yeniden denenmez.** Hata olursa dur ve hatayı göster; yanlış denemeler kartı bloke eder.
 - PIN loglanmaz, diske yazılmaz; kullanımdan sonra `CharArray` sıfırlanır.
+- TSA parolası yalnızca bellekte tutulur, kalıcı saklanmaz (kullanıcı kararı): uygulama her açılışta yeniden sorar.
+  Keychain/Credential Manager veya şifreli dosyaya yazma eklenmez.
 - Kişisel veriler (TC kimlik no, e-posta) loglara, test çıktılarına veya commit'lere girmez.
 - Kullanıcı ne gördüğünü imzalamalı: imzalanacak dosya imzadan önce kullanıcıya gösterilir/onaylatılır.
 
@@ -187,7 +189,7 @@ dist/linux_arm64/run.sh
    kökleriyle gömülü güven listesi, 5070 nitelik kontrolü, `.imz` içeriğini açma/kaydetme.
 3. Görünür imza ve sayfadaki konum seçimi; `.imz` dosyasını açıp içeriği gösterme.
 4. **Yapıldı, gerçek TSA ile denenmesi gerekiyor:** Zaman damgası (B-T), B-LT (OCSP/CRL gömülü), Kamu SM kimlik
-   başlığı, ayar penceresi. Kalan: B-LTA (arşiv zaman damgası), TSA parolasının kalıcı saklanması (karar bekliyor).
+   başlığı, ayar penceresi. Kalan: B-LTA (arşiv zaman damgası).
 5. Seri ve paralel imza.
 6. Paketleme ve kod imzalama (Apple notarization, Windows code signing), GitHub Actions.
 7. İleride: sunucu tarafı bölünmüş imzalama, çok kullanıcı, ticarileştirme (hukuki uyum ayrıca incelenecek).
