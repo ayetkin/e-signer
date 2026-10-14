@@ -71,14 +71,7 @@ fun Panel(
 }
 
 @Composable
-fun AppMark(size: Dp) {
-    Box(
-        Modifier.size(size).background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(size * 0.5f))
-    }
-}
+fun AppMark(size: Dp) = AppIcon(size)
 
 @Composable
 fun Avatar(name: String, size: Dp = 40.dp) {

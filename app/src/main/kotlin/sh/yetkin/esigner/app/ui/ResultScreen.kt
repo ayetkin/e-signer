@@ -41,8 +41,7 @@ import sh.yetkin.esigner.app.i18n.str
 fun ResultScreen(state: AppState, results: List<FileResult>) {
     val succeeded = results.count { it.output != null }
     val allOk = succeeded == results.size
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        TopBar(state)
+    AppShell(state) {
         Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp), contentAlignment = Alignment.TopCenter) {
             Panel(Modifier.widthIn(max = 760.dp).fillMaxWidth(), padding = PaddingValues(0.dp)) {
                 Column(

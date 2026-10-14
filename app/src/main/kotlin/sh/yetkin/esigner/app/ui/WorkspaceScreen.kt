@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -52,7 +51,6 @@ import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.i18n.str
-import sh.yetkin.esigner.core.FormatMode
 import sh.yetkin.esigner.core.SignatureFormat
 import sh.yetkin.esigner.core.formatFor
 import java.awt.datatransfer.DataFlavor
@@ -63,8 +61,7 @@ import java.io.File
 fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> File?) {
     var hovering by remember { mutableStateOf(false) }
     val verify = state.tab == Tab.VERIFY
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        TopBar(state)
+    AppShell(state) {
         Box(
             Modifier
                 .weight(1f)
@@ -88,63 +85,6 @@ fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> 
             }
         }
         if (!verify) BottomBar(state)
-    }
-}
-
-@Composable
-fun TopBar(state: AppState) {
-    Column {
-        Row(
-            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AppMark(32.dp)
-            Text(
-                str("app.name"),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 12.dp, end = 28.dp),
-            )
-            Segmented(
-                listOf(Tab.SIGN to str("tab.sign"), Tab.VERIFY to str("tab.verify")),
-                state.tab,
-                enabled = state.flow !is SignFlow.Signing && state.flow !is SignFlow.Confirm,
-                onSelect = state::selectTab,
-            )
-            Spacer(Modifier.weight(1f))
-            LanguageSwitch(state.language, state::switchLanguage)
-            Spacer(Modifier.width(16.dp))
-            CardChip(state)
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-    }
-}
-
-@Composable
-private fun CardChip(state: AppState) {
-    val card = state.selectedCard
-    Row(
-        Modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
-            .padding(start = 10.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        if (card == null) {
-            Chip(str(if (state.selectedSlot == null) "card.none" else "card.removed"), Tone.WARNING)
-        } else {
-            val name = card.holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
-            Avatar(name, 30.dp)
-            Column {
-                Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                card.holder?.let { idLine(it) }?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        TextButton(onClick = state::changeCard, enabled = state.flow !is SignFlow.Signing) {
-            Text(str(if (state.selectedSlot == null) "card.choose" else "card.change"))
-        }
     }
 }
 
@@ -282,7 +222,6 @@ fun FormatChip(format: SignatureFormat) {
 
 @Composable
 private fun BottomBar(state: AppState) {
-    val editable = state.flow == SignFlow.Idle
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
@@ -290,20 +229,15 @@ private fun BottomBar(state: AppState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(str("format.label"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Segmented(
-                listOf(FormatMode.AUTO to str("format.auto"), FormatMode.CADES_ONLY to str("format.cadesOnly")),
-                state.mode,
-                enabled = editable,
-            ) { state.mode = it }
+            val missing = state.settings.missingTsa
             Text(
-                str(if (state.mode == FormatMode.AUTO) "format.auto.hint" else "format.cadesOnly.hint"),
+                if (missing) str("level.tsaMissing") else str("sign.dialog.level", levelSummary(state.settings)),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
-                maxLines = 2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            LevelButton(state, editable)
             val count = state.files.size
             Button(
                 onClick = state::requestSign,
@@ -316,29 +250,6 @@ private fun BottomBar(state: AppState) {
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
-        }
-    }
-}
-
-/** Current signature level; opens the settings. Warns when a timestamp level has no usable TSA. */
-@Composable
-private fun LevelButton(state: AppState, enabled: Boolean) {
-    val missing = state.settings.missingTsa
-    OutlinedButton(onClick = state::openSettings, enabled = enabled) {
-        Column {
-            Text(
-                str("settings.level"),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                if (missing) str("level.tsaMissing") else levelSummary(state.settings),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 260.dp),
-            )
         }
     }
 }

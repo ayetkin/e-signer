@@ -62,6 +62,11 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
     (alt çubuktaki "İmza seviyesi" düğmesi).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
     `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
+- Arayüz düzeni: çalışma alanı ve sonuç ekranı `AppShell` (`ui/Sidebar.kt`) içinde. Sol panelde sekmeler,
+  kart (Değiştir), imza ayarları (biçim, seviye, Düzenle) ve dil; sağda içerik ve yalnızca "İmzala" düğmeli alt çubuk.
+- Simge: `ui/AppIcon.kt` kodla çizilir (uygulama içi logo + pencere simgesi). `IconTest` 1024 px PNG üretir
+  (`app/build/icon/`), sonuçlar `app/packaging/` altına kopyalanır; `icon.icns` macOS'ta `sips` + `iconutil`
+  ile üretildi. Windows `.ico` henüz yok.
 - `tools/screenshots.Dockerfile` + `app/src/test/.../ScreenshotTest.kt`: tüm ekranları örnek verilerle
   `app/build/screenshots/*.png`'ye çizer (TR, EN, koyu tema). Arayüz değişikliğinden sonra görüntülere bakarak
   kontrol et (ekran kaydı izni yok, Mac'teki pencere görülemiyor).
@@ -96,6 +101,10 @@ container run --rm -m 6G -c 4 -v "$PWD:/src" -w /src -e GRADLE_USER_HOME=/src/.g
 # Çalıştırılabilir paket (core testleri build içinde koşar) ve çalıştırma
 container build -m 8G -c 4 --output type=local,dest=dist .
 dist/linux_arm64/run.sh
+
+# Yerel macOS .app (Dock/menüde "java" yerine "E-Imza" ve uygulama simgesi). jpackage, vendor/'daki
+# hedef JDK arşivinden vendor/target-jdk/ altına açılıp kullanılır, sisteme bir şey kurulmaz.
+tools/package-mac.sh && open dist/mac/E-Imza.app
 ```
 
 - **Bellek kuralı (min 4 GB):** Apple container varsayılanları `container.memory = 1gb`, `build.memory = 2048mb`

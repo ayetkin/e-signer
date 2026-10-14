@@ -10,6 +10,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import sh.yetkin.esigner.app.ui.App
 import sh.yetkin.esigner.app.ui.AppTheme
+import sh.yetkin.esigner.app.ui.drawAppIcon
 import java.awt.Dimension
 import java.awt.FileDialog
 
@@ -23,6 +24,7 @@ fun main() = application {
             exitApplication()
         },
         title = state.strings["app.name"],
+        icon = AppIconPainter,
         state = rememberWindowState(size = DpSize(1040.dp, 720.dp)),
     ) {
         window.minimumSize = Dimension(880, 620)
@@ -47,4 +49,11 @@ fun main() = application {
             )
         }
     }
+}
+
+/** Window and taskbar icon; the packaged app uses the .icns/.ico rendered from the same drawing. */
+private object AppIconPainter : androidx.compose.ui.graphics.painter.Painter() {
+    override val intrinsicSize = androidx.compose.ui.geometry.Size(256f, 256f)
+
+    override fun androidx.compose.ui.graphics.drawscope.DrawScope.onDraw() = drawAppIcon()
 }
