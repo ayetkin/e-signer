@@ -52,17 +52,17 @@ class CardSession private constructor(
          * Opens the card and logs in exactly once. On any failure the token is closed, the PIN zeroed and a
          * [SigningException] thrown; there is no retry, a wrong PIN must not be tried again automatically.
          *
-         * The slot is selected by its position in the slot list, not by id (AKİS' first slot id is 1).
+         * [slotId] is the real PKCS#11 slot id from [CardScanner] (the first AKIS slot id is 1, not 0).
          */
-        fun open(libraryPath: String, slotIndex: Int, pin: CharArray): CardSession {
+        fun open(libraryPath: String, slotId: Long, pin: CharArray): CardSession {
             var token: Pkcs11SignatureToken? = null
             try {
                 if (!File(libraryPath).isFile) {
-                    throw SigningException("Kart kütüphanesi bulunamadı: $libraryPath. Kart sürücüsünün kurulu olduğundan emin olun.")
+                    throw SigningException(SigningError.LIBRARY_NOT_FOUND, libraryPath)
                 }
-                token = Pkcs11SignatureToken(libraryPath, PasswordInputCallback { pin }, -1, slotIndex, "")
+                token = Pkcs11SignatureToken(libraryPath, PasswordInputCallback { pin }, slotId.toInt(), -1, "")
                 val keys = token.keys.map { SignerKey(it, CertificateInfo.from(it.certificate.certificate)) }
-                if (keys.isEmpty()) throw SigningException("Kartta imza anahtarı bulunamadı.", isCardError = true)
+                if (keys.isEmpty()) throw SigningException(SigningError.NO_SIGNING_KEY)
                 return CardSession(token, pin, keys)
             } catch (e: Throwable) {
                 try {
@@ -70,8 +70,7 @@ class CardSession private constructor(
                 } catch (_: Exception) {
                 }
                 pin.fill('\u0000')
-                // LinkageError: the library could not be loaded (e.g. wrong architecture).
-                if (e is Exception || e is LinkageError) throw cardError(e) else throw e
+                                if (e is Exception || e is LinkageError) throw cardError(e) else throw e
             }
         }
     }

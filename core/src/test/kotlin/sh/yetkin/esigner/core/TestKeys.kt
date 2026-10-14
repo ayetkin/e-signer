@@ -30,7 +30,7 @@ object TestKeys {
         val subject = X500NameBuilder(BCStyle.INSTANCE)
             .addRDN(BCStyle.C, "TR")
             .addRDN(BCStyle.SERIALNUMBER, FAKE_NATIONAL_ID)
-            .addRDN(BCStyle.CN, "Test Kullanıcı")
+            .addRDN(BCStyle.CN, "Test User")
             .build()
         val now = Instant.now()
         val holder = JcaX509v3CertificateBuilder(

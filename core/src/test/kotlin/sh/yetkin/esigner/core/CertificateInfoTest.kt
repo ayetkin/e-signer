@@ -15,9 +15,9 @@ class CertificateInfoTest {
     @Test
     fun `reads display fields and never exposes the full national id`() {
         val info = CertificateInfo.from(TestKeys.certificate)
-        assertEquals("Test Kullanıcı", info.commonName)
+        assertEquals("Test User", info.commonName)
         assertEquals("12*******01", info.maskedNationalId)
-        assertEquals("Test Kullanıcı", info.issuerName)
+        assertEquals("Test User", info.issuerName)
         assertTrue(info.isSigningCertificate)
         assertTrue(info.isValidAt(Instant.now()))
         assertTrue(TestKeys.FAKE_NATIONAL_ID !in info.toString())

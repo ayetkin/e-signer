@@ -26,12 +26,26 @@ dependencies {
     implementation("org.jetbrains.compose.material:material-icons-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.8.1")
     runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
+
+    testImplementation(kotlin("test"))
 }
 
 kotlin {
     jvmToolchain(21)
 }
 
+// The card scanner in core uses the JDK's internal PKCS#11 wrapper.
+val pkcs11Exports = listOf(
+    "--add-modules", "jdk.crypto.cryptoki",
+    "--add-exports", "jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED",
+)
+
 application {
     mainClass.set("sh.yetkin.esigner.app.MainKt")
+    applicationDefaultJvmArgs = pkcs11Exports
+}
+
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs(pkcs11Exports)
 }

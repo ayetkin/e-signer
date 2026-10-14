@@ -10,18 +10,33 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
 
 ## Depo yapısı
 
+- **Kodda Türkçe yok:** kod, yorum, test verisi ve kullanıcı metinleri dahil. Uygulama iki dilli (TR/EN), tüm
+  kullanıcı metinleri `app/src/main/resources/i18n/strings_{tr,en}.properties` içinde. `core` hata kodu döndürür.
 - `core/`: arayüzden bağımsız imzalama (`sh.yetkin.esigner.core`).
   - `DocumentSigner`: herhangi bir `SignatureTokenConnection` ile imzalar. DSS'in üç adımlı akışı
     (`getDataToSign` → `token.sign` → `signDocument`) ayrı tutuldu, ileride bölünmüş imzalama buraya oturacak.
     Çıktı önce geçici dosyaya yazılır, sonra yerine taşınır. Var olan dosyanın üzerine asla yazmaz.
-  - `CardSession`: PKCS#11 oturumu. Tek login denemesi yapar, PIN dizisinin sahipliğini alır, `close()`'da sıfırlar.
-    Erişim tek thread'den olmalı (app tarafında `card` adlı tek thread'li dispatcher).
-  - `SigningException.isCardError`: kart hatasıysa toplu imza durdurulur, dosya hatasıysa sıradakine geçilir.
-    `cardError()` SunPKCS11'in `CKR_*` kodlarını Türkçe kullanıcı mesajına çevirir.
+    PAdES çıktı soneki (`-imzali`/`-signed`) arayüz dilinden gelir.
+  - `CardScanner` + `Pkcs11Scanner.java`: PIN'siz kart tespiti. JDK'nın dahili PKCS#11 sarmalayıcısıyla
+    (`sun.security.pkcs11.wrapper`) slot/token bilgisi, PIN sayaç bayrakları (`COUNT_LOW`/`FINAL_TRY`/`LOCKED`) ve
+    karttaki açık sertifikalar okunur. Derleme ve çalıştırmada `--add-modules jdk.crypto.cryptoki` +
+    `--add-exports jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED` gerekir (build.gradle.kts, run.sh).
+    Modül, SunPKCS11 ile aynı `PKCS11.getInstance` önbelleğini paylaşır (aynı init bayrakları kullanılmalı).
+  - `CardSession`: tek login denemesi. Gerçek slot ID'si ile açılır (`Pkcs11SignatureToken(..., slotId, -1, "")`,
+    DSS bu durumda `slot = <id>` yazar). PIN dizisinin sahipliğini alır, `close()`'da sıfırlar.
+  - `SigningException(error: SigningError, subject)`: `isCardError` ise toplu imza durur, dosya hatasıysa devam eder.
+    `cardError()` SunPKCS11'in `CKR_*` kodlarını `SigningError`'a çevirir.
   - `CertificateInfo`: TC no yalnızca maskeli tutulur (`12*******01`).
-- `app/`: Compose Desktop (Material3). `AppState` tüm durum ve aksiyonları tutar; `ui/` saf composable'lar.
-  Akış: dosyalar → biçim → PIN ile kartı aç → "inceledim" onayı → imzala → sonuç ekranı. Her imzalama
-  sonrası oturum kapanır, yeni imza için PIN tekrar girilir.
+- `app/`: Compose Desktop (Material3). `AppState` tüm durum ve aksiyonları tutar; `ui/` saf composable'lar
+  (`App(state)` kök). Tüm kart çağrıları tek thread'li `card` dispatcher'ında.
+  Akış: kart seçimi (2 sn'de bir otomatik tarama, tek kart otomatik seçilir) → dosyalar + biçim →
+  "İmzala" → onay penceresi (imzalayan, dosya özeti, PIN uyarıları, PIN, "inceledim" onayı) → tek login,
+  tüm dosyalar, oturum kapanır → sonuç ekranı. Pencereler in-tree overlay (native dialog değil).
+  - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
+    `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
+- `tools/screenshots.Dockerfile` + `app/src/test/.../ScreenshotTest.kt`: tüm ekranları örnek verilerle
+  `app/build/screenshots/*.png`'ye çizer (TR, EN, koyu tema). Arayüz değişikliğinden sonra görüntülere bakarak
+  kontrol et (ekran kaydı izni yok, Mac'teki pencere görülemiyor).
 - `eimza-test/`: ilk CLI prototipi (ayrı Gradle projesi, root build'e dahil değil). Sadece referans.
 
 ## Komutlar
@@ -34,6 +49,10 @@ mkdir -p vendor && curl -fL -o vendor/target-jdk.tar.gz "<temurin21 GitHub relea
 container run --rm -m 6G -c 4 -v "$PWD:/src" -w /src -e GRADLE_USER_HOME=/src/.gradle-home \
   gradle:8-jdk21 gradle --no-daemon -PcomposeTarget=macos-arm64 :core:test :app:compileKotlin
 # Tek test: ... gradle --no-daemon :core:test --tests 'sh.yetkin.esigner.core.DocumentSignerTest'
+
+# Arayüz ekran görüntüleri (bir kez imaj: container build -m 8G -c 4 -t esigner-screenshots -f tools/screenshots.Dockerfile tools)
+container run --rm -m 6G -c 4 -v "$PWD:/src" -w /src -e GRADLE_USER_HOME=/src/.gradle-home \
+  esigner-screenshots gradle --no-daemon -PcomposeTarget=linux-arm64 :app:test
 
 # Çalıştırılabilir paket (core testleri build içinde koşar) ve çalıştırma
 container build -m 8G -c 4 --output type=local,dest=dist .
@@ -75,6 +94,8 @@ dist/linux_arm64/run.sh
 - SunPKCS11 ile `SHA256withRSA` sorunsuz çalışıyor (karta özel mekanizma ayarı gerekmedi).
 - Kartta tek imza anahtarı/sertifikası var.
 - DSS 6.1 PDFBox 2.0.x getirir (3.x değil). Yazılım anahtarı sınıfı `Pkcs12SignatureToken` (`KeyStoreSignatureToken` yok).
+- Kart tespiti gerçek AKİS kartla doğrulandı: PIN'siz slot/token okuma, slot ID 1, açık imza sertifikası okunabiliyor.
+- Headless ekran görüntüsü: `ImageComposeScene` + Skiko linux; imajda `libgl1` ve font (Inter/DejaVu) gerekir.
 - Compose 1.7.3'te sürükle-bırak: `Modifier.dragAndDropTarget` + `event.nativeEvent as DropTargetDropEvent`
   (eski `DragData` API'si hata veriyor).
 - Doğrulama: PAdES imzalı PDF Adobe Reader'da; `.imz` için

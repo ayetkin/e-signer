@@ -1,16 +1,35 @@
 package sh.yetkin.esigner.core
 
+/** Error codes; the UI maps them to localized text. */
+enum class SigningError(val isCardError: Boolean) {
+    LIBRARY_NOT_FOUND(false),
+    LIBRARY_LOAD_FAILED(false),
+    PIN_INCORRECT(true),
+    PIN_LOCKED(true),
+    PIN_LENGTH(true),
+    CARD_NOT_FOUND(true),
+    NO_SIGNING_KEY(true),
+    CARD_FAILED(true),
+    FILE_NOT_FOUND(false),
+    OUTPUT_EXISTS(false),
+    FILE_UNSUPPORTED(false),
+    WRITE_FAILED(false),
+    UNEXPECTED(false),
+}
+
 /**
- * An error with a message that can be shown to the user as is.
- * [isCardError] is true when the card or token failed (not the file), so a batch should stop.
+ * A failure with a code the UI can translate. [subject] is an optional value for the message (a file
+ * name or a library path). When [isCardError] is true the card failed, not the file, so a batch should stop.
  */
 class SigningException(
-    val userMessage: String,
+    val error: SigningError,
+    val subject: String? = null,
     cause: Throwable? = null,
-    val isCardError: Boolean = false,
-) : Exception(userMessage, cause) {
+) : Exception(if (subject == null) error.name else "${error.name}: $subject", cause) {
 
-    /** Technical cause chain for an "details" view. Never contains the PIN. */
+    val isCardError: Boolean get() = error.isCardError
+
+    /** Technical cause chain for a "details" view. Never contains the PIN. */
     val technicalDetail: String?
         get() = cause?.let { root ->
             generateSequence(root) { it.cause }
@@ -18,20 +37,18 @@ class SigningException(
         }
 }
 
-/** Maps PKCS#11 failures (reported by SunPKCS11 as CKR_* codes somewhere in the cause chain) to user messages. */
+/** Maps PKCS#11 failures (SunPKCS11 reports CKR_* codes somewhere in the cause chain) to error codes. */
 internal fun cardError(e: Throwable): SigningException {
     if (e is SigningException) return e
+    if (e is LinkageError) return SigningException(SigningError.LIBRARY_LOAD_FAILED, cause = e)
     val text = generateSequence(e) { it.cause }.joinToString(" | ") { it.message.orEmpty() }
-    val message = when {
-        "CKR_PIN_INCORRECT" in text ->
-            "PIN hatalı. Her yanlış deneme kalan hakkı azaltır, tekrar denemeden önce PIN'i kontrol edin."
-        "CKR_PIN_LOCKED" in text ->
-            "Kartın PIN'i bloke olmuş. Blokeyi kaldırmak için kart yönetim aracını (PUK) kullanın."
-        "CKR_PIN_LEN_RANGE" in text -> "PIN uzunluğu geçersiz."
+    val error = when {
+        "CKR_PIN_INCORRECT" in text -> SigningError.PIN_INCORRECT
+        "CKR_PIN_LOCKED" in text -> SigningError.PIN_LOCKED
+        "CKR_PIN_LEN_RANGE" in text -> SigningError.PIN_LENGTH
         listOf("CKR_TOKEN_NOT_PRESENT", "CKR_DEVICE_REMOVED", "CKR_SLOT_ID_INVALID", "slotListIndex", "CKR_DEVICE_ERROR")
-            .any { it in text } ->
-            "Kart bulunamadı. Kart okuyucunun takılı ve kartın yerinde olduğundan emin olun."
-        else -> "Kart işlemi başarısız oldu."
+            .any { it in text } -> SigningError.CARD_NOT_FOUND
+        else -> SigningError.CARD_FAILED
     }
-    return SigningException(message, e, isCardError = true)
+    return SigningException(error, cause = e)
 }

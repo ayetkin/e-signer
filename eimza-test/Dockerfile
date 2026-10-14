@@ -1,24 +1,24 @@
 # syntax=docker/dockerfile:1
 #
-# Önce hedef JDK'yı indir (Apple Silicon):
+# First download the target JDK (Apple Silicon):
 #   mkdir -p vendor && curl -fL -o vendor/target-jdk.tar.gz \
 #     "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz"
-#   (Intel Mac için dosya adında aarch64 yerine x64)
-# Sonra:
+#   (for Intel Macs use x64 instead of aarch64 in the file name)
+# Then:
 #   container build --output type=local,dest=dist .
 #
-# Çıktı: dist/  -> run.sh + lib/ (uygulama) + runtime/ (hedef platform için küçültülmüş Java)
+# Output: dist/ -> run.sh + lib/ (app) + runtime/ (trimmed Java for the target platform)
 
-# 1) Uygulamayı derle (platformdan bağımsız .jar dosyaları)
+# 1) Build the app (platform independent jars)
 FROM gradle:8-jdk21 AS build
 WORKDIR /src
 COPY settings.gradle.kts build.gradle.kts ./
 COPY src ./src
 RUN gradle --no-daemon installDist
 
-# 2) Hedef platform (mac) için Java runtime'ı jlink ile üret
-#    Hedef JDK arşivi Mac'te indirilip vendor/ klasörüne konur (container içinden indirme yok).
-#    jlink sürümü ile hedef JDK sürümü birebir aynı olmalı, bu yüzden imaj sürümü sabit.
+# 2) Build the Java runtime for the target platform (mac) with jlink
+#    The target JDK archive is downloaded on the Mac into vendor/ (no download inside the container).
+#    jlink must match the target JDK version exactly, hence the pinned image version.
 FROM eclipse-temurin:21.0.12.1_1-jdk AS runtime
 COPY vendor/target-jdk.tar.gz /tmp/target-jdk.tar.gz
 RUN set -eux; \
@@ -34,6 +34,6 @@ COPY --from=build /src/build/install/eimza-test/lib /out/lib
 COPY run.sh /out/run.sh
 RUN chmod +x /out/run.sh
 
-# 3) Sadece çıktıyı dışarı aktar
+# 3) Export only the result
 FROM scratch AS export
 COPY --from=runtime /out /

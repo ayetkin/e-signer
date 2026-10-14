@@ -1,5 +1,6 @@
 package sh.yetkin.esigner.app
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.DpSize
@@ -7,28 +8,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import sh.yetkin.esigner.app.ui.App
 import sh.yetkin.esigner.app.ui.AppTheme
-import sh.yetkin.esigner.app.ui.MainScreen
+import java.awt.Dimension
 import java.awt.FileDialog
-import java.io.File
 
 fun main() = application {
     val scope = rememberCoroutineScope()
     val state = remember { AppState(scope) }
+    LaunchedEffect(Unit) { state.watchCards() }
     Window(
         onCloseRequest = {
             state.dispose()
             exitApplication()
         },
-        title = "E-imza",
-        state = rememberWindowState(size = DpSize(1040.dp, 700.dp)),
+        title = state.strings["app.name"],
+        state = rememberWindowState(size = DpSize(1040.dp, 720.dp)),
     ) {
-        window.minimumSize = java.awt.Dimension(860, 600)
+        window.minimumSize = Dimension(880, 620)
         AppTheme {
-            MainScreen(
+            App(
                 state = state,
                 pickFiles = {
-                    val dialog = FileDialog(window, "İmzalanacak dosyaları seçin", FileDialog.LOAD).apply {
+                    val dialog = FileDialog(window, state.strings["files.chooseTitle"], FileDialog.LOAD).apply {
                         isMultipleMode = true
                         isVisible = true
                     }
@@ -36,14 +38,5 @@ fun main() = application {
                 },
             )
         }
-    }
-}
-
-internal fun File.sizeLabel(): String {
-    val bytes = length()
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
-        else -> "%.1f MB".format(bytes / (1024.0 * 1024))
     }
 }

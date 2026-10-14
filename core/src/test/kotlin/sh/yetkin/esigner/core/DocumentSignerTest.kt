@@ -25,7 +25,7 @@ class DocumentSignerTest {
         dir.deleteRecursively()
     }
 
-    private fun pdf(name: String = "belge.pdf") = File(dir, name).also { file ->
+    private fun pdf(name: String = "report.pdf") = File(dir, name).also { file ->
         PDDocument().use { it.addPage(PDPage()); it.save(file) }
     }
 
@@ -34,7 +34,7 @@ class DocumentSignerTest {
     @Test
     fun `pades signs pdf and keeps existing signatures`() {
         val first = signer.sign(pdf(), SignatureFormat.PADES, token, key)
-        assertEquals("belge-imzali.pdf", first.name)
+        assertEquals("report-signed.pdf", first.name)
         assertEquals(1, signatureCount(first))
 
         val second = signer.sign(first, SignatureFormat.PADES, token, key)
@@ -43,9 +43,9 @@ class DocumentSignerTest {
 
     @Test
     fun `cades envelopes any file and the content is recoverable`() {
-        val input = File(dir, "notlar.txt").apply { writeText("merhaba dünya") }
+        val input = File(dir, "notes.txt").apply { writeText("hello world") }
         val output = signer.sign(input, SignatureFormat.CADES, token, key)
-        assertEquals("notlar.txt.imz", output.name)
+        assertEquals("notes.txt.imz", output.name)
 
         val cms = CMSSignedData(output.readBytes())
         val signerInfo = cms.signerInfos.signers.single()
@@ -56,17 +56,23 @@ class DocumentSignerTest {
     @Test
     fun `never overwrites an existing output`() {
         val input = pdf()
-        val existing = outputFileFor(input, SignatureFormat.PADES).apply { writeText("eski") }
+        val existing = outputFileFor(input, SignatureFormat.PADES).apply { writeText("old") }
         assertFailsWith<SigningException> { signer.sign(input, SignatureFormat.PADES, token, key) }
-        assertEquals("eski", existing.readText())
+        assertEquals("old", existing.readText())
     }
 
     @Test
     fun `broken pdf is a file error, not a card error`() {
-        val input = File(dir, "bozuk.pdf").apply { writeText("not a pdf") }
+        val input = File(dir, "broken.pdf").apply { writeText("not a pdf") }
         val e = assertFailsWith<SigningException> { signer.sign(input, SignatureFormat.PADES, token, key) }
         assertTrue(!e.isCardError)
-        assertTrue(dir.listFiles()!!.none { it.name.endsWith(".tmp") || it.name.contains("imzali") })
+        assertTrue(dir.listFiles()!!.none { it.name.endsWith(".tmp") || it.name.contains("signed") })
+    }
+
+    @Test
+    fun `output names`() {
+        assertEquals("a-imzali.pdf", outputFileFor(File("/x/a.pdf"), SignatureFormat.PADES, "-imzali").name)
+        assertEquals("a.docx.imz", outputFileFor(File("/x/a.docx"), SignatureFormat.CADES).name)
     }
 
     @Test

@@ -24,15 +24,15 @@ fun defaultLibPath(): String {
 
 fun readPin(): CharArray {
     val console = System.console()
-    if (console != null) return console.readPassword("AKİS PIN: ")
-    print("AKİS PIN (ekranda görünecek): ")
+    if (console != null) return console.readPassword("AKIS PIN: ")
+    print("AKIS PIN (will be visible): ")
     return (readLine() ?: "").toCharArray()
 }
 
 fun subjectOf(key: DSSPrivateKeyEntry): String =
     key.certificate.certificate.subjectX500Principal.name
 
-/** PDF içine PAdES imzası (mevcut imzalar korunur, artımlı güncelleme). */
+/** PAdES signature inside the PDF (existing signatures kept, incremental update). */
 fun signPades(input: File, token: Pkcs11SignatureToken, key: DSSPrivateKeyEntry): File {
     val doc = FileDocument(input)
     val params = PAdESSignatureParameters().apply {
@@ -45,12 +45,12 @@ fun signPades(input: File, token: Pkcs11SignatureToken, key: DSSPrivateKeyEntry)
     val toSign = service.getDataToSign(doc, params)
     val sigValue = token.sign(toSign, params.digestAlgorithm, key)
     val signed = service.signDocument(doc, params, sigValue)
-    val out = File(input.parentFile, input.nameWithoutExtension + "-imzali.pdf")
+    val out = File(input.parentFile, input.nameWithoutExtension + "-signed.pdf")
     signed.save(out.absolutePath)
     return out
 }
 
-/** Herhangi bir dosyayı içine alan (enveloping) CAdES imzası -> .imz */
+/** Enveloping CAdES signature for any file -> .imz */
 fun signCades(input: File, token: Pkcs11SignatureToken, key: DSSPrivateKeyEntry): File {
     val doc = FileDocument(input)
     val params = CAdESSignatureParameters().apply {
@@ -71,50 +71,50 @@ fun signCades(input: File, token: Pkcs11SignatureToken, key: DSSPrivateKeyEntry)
 
 fun main(args: Array<String>) {
     if (args.size < 2 || args[0] !in setOf("pades", "cades")) {
-        println("Kullanım:")
-        println("  eimza-test pades <dosya.pdf>     -> <dosya>-imzali.pdf")
-        println("  eimza-test cades <herhangi-dosya> -> <dosya>.imz")
-        println("Kütüphane yolu farklıysa: AKIS_LIB=/yol/libakisp11.dylib eimza-test ...")
+        println("Usage:")
+        println("  eimza-test pades <file.pdf> -> <file>-signed.pdf")
+        println("  eimza-test cades <any-file> -> <file>.imz")
+        println("Different library path: AKIS_LIB=/path/libakisp11.dylib eimza-test ...")
         exitProcess(1)
     }
     val mode = args[0]
     val input = File(args[1])
     if (!input.isFile) {
-        println("Dosya bulunamadı: ${input.absolutePath}")
+        println("File not found: ${input.absolutePath}")
         exitProcess(1)
     }
 
     val lib = System.getenv("AKIS_LIB") ?: defaultLibPath()
-    println("PKCS#11 kütüphanesi: $lib")
+    println("PKCS#11 library: $lib")
 
-    // PIN tek sefer sorulur; hata olursa tekrar denenmez (bloke riskine karşı).
+    // The PIN is asked once and never retried (a wrong PIN can block the card).
     val pin = readPin()
-    // Slot'u ID ile değil sırasıyla seç (AKİS'te ilk slot'un ID'si 0 değil 1).
+    // Select the slot by list index, not id (the first AKIS slot id is 1, not 0).
     val slotIndex = System.getenv("AKIS_SLOT_INDEX")?.toIntOrNull() ?: 0
     val token = Pkcs11SignatureToken(lib, PasswordInputCallback { pin }, -1, slotIndex, "")
     try {
         val keys = token.keys
         if (keys.isEmpty()) {
-            println("Kartta imza anahtarı bulunamadı.")
+            println("No signing key found on the card.")
             exitProcess(2)
         }
-        keys.forEachIndexed { i, k -> println("Anahtar [$i]: ${subjectOf(k)}") }
+        keys.forEachIndexed { i, k -> println("Key [$i]: ${subjectOf(k)}") }
         val key = keys.first()
-        println("Kullanılan: ${subjectOf(key)}")
+        println("Using: ${subjectOf(key)}")
 
         val out = when (mode) {
             "pades" -> signPades(input, token, key)
             else -> signCades(input, token, key)
         }
-        println("Başarılı. İmzalı dosya: ${out.absolutePath}")
+        println("Done. Signed file: ${out.absolutePath}")
     } catch (e: Exception) {
-        println("HATA: ${e.javaClass.simpleName}: ${e.message}")
+        println("ERROR: ${e.javaClass.simpleName}: ${e.message}")
         var c = e.cause
         while (c != null) {
-            println("  sebep: ${c.javaClass.simpleName}: ${c.message}")
+            println("  cause: ${c.javaClass.simpleName}: ${c.message}")
             c = c.cause
         }
-        println("PIN'i tekrar denemeden önce bu çıktıyı paylaş.")
+        println("Share this output before trying the PIN again.")
         exitProcess(3)
     } finally {
         token.close()

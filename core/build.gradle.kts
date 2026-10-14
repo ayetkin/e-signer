@@ -18,6 +18,17 @@ kotlin {
     jvmToolchain(21)
 }
 
+// Pkcs11Scanner uses the JDK's internal PKCS#11 wrapper to list cards without logging in.
+val pkcs11Exports = listOf(
+    "--add-modules", "jdk.crypto.cryptoki",
+    "--add-exports", "jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED",
+)
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(pkcs11Exports)
+}
+
 tasks.test {
     useJUnitPlatform()
+    jvmArgs(pkcs11Exports)
 }

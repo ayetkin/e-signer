@@ -35,8 +35,8 @@ class DocumentSigner {
         key: DSSPrivateKeyEntry,
         output: File = outputFileFor(input, format),
     ): File {
-        if (!input.isFile) throw SigningException("Dosya bulunamadı: ${input.name}")
-        if (output.exists()) throw SigningException("Çıktı dosyası zaten var: ${output.name}")
+        if (!input.isFile) throw SigningException(SigningError.FILE_NOT_FOUND, input.name)
+        if (output.exists()) throw SigningException(SigningError.OUTPUT_EXISTS, output.name)
 
         val document = FileDocument(input)
         val signed = when (format) {
@@ -81,7 +81,7 @@ class DocumentSigner {
     private inline fun <T> fileStep(block: () -> T): T = try {
         block()
     } catch (e: Exception) {
-        throw SigningException("Dosya imzalanamadı. Dosya bozuk ya da desteklenmeyen bir biçimde olabilir.", e)
+        throw SigningException(SigningError.FILE_UNSUPPORTED, cause = e)
     }
 
     /** Writes next to the target and moves into place, so a failure never leaves a half-written output. */
@@ -92,7 +92,7 @@ class DocumentSigner {
             // No REPLACE_EXISTING: fails instead of overwriting a file created in the meantime.
             Files.move(temp.toPath(), output.toPath())
         } catch (e: Exception) {
-            throw SigningException("İmzalı dosya yazılamadı: ${output.name}", e)
+            throw SigningException(SigningError.WRITE_FAILED, output.name, e)
         } finally {
             temp.delete()
         }
