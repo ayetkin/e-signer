@@ -34,7 +34,15 @@ fun main() = application {
                         isMultipleMode = true
                         isVisible = true
                     }
-                    state.addFiles(dialog.files.toList())
+                    if (state.tab == Tab.VERIFY) state.addForVerify(dialog.files.toList()) else state.addFiles(dialog.files.toList())
+                },
+                saveFile = { suggested ->
+                    val dialog = FileDialog(window, state.strings["verify.saveTitle"], FileDialog.SAVE).apply {
+                        directory = suggested.parent
+                        file = suggested.name
+                        isVisible = true
+                    }
+                    dialog.file?.let { java.io.File(dialog.directory, it) }
                 },
             )
         }

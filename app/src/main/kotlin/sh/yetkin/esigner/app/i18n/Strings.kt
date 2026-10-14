@@ -39,6 +39,8 @@ class Strings private constructor(val language: Language) {
 
     val keys: Set<String> get() = bundle.keySet()
 
+    fun has(key: String): Boolean = bundle.containsKey(key)
+
     operator fun get(key: String, vararg args: Any): String {
         // A missing key is visible in the UI instead of crashing; StringsTest keeps both bundles complete.
         var text = if (bundle.containsKey(key)) bundle.getString(key) else "[$key]"

@@ -15,6 +15,8 @@ enum class SigningError(val isCardError: Boolean) {
     FILE_UNSUPPORTED(false),
     WRITE_FAILED(false),
     UNEXPECTED(false),
+    NOT_SIGNED(false),
+    NO_ORIGINAL_CONTENT(false),
 }
 
 /**

@@ -26,10 +26,21 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
     DSS bu durumda `slot = <id>` yazar). PIN dizisinin sahipliğini alır, `close()`'da sıfırlar.
   - `SigningException(error: SigningError, subject)`: `isCardError` ise toplu imza durur, dosya hatasıysa devam eder.
     `cardError()` SunPKCS11'in `CKR_*` kodlarını `SigningError`'a çevirir.
-  - `CertificateInfo`: TC no yalnızca maskeli tutulur (`12*******01`).
+  - `CertificateInfo`: TC no yalnızca maskeli tutulur (`12*******01`). `isQualified5070`: sertifikada
+    `2.16.792.1.61.0.1.5070.1.1` QC beyanı var (5070'e göre nitelikli sertifika).
+  - `SignatureValidator`: DSS varsayılan ETSI politikasıyla PAdES/CAdES doğrulama, çevrimiçi OCSP/CRL/AIA
+    (`dss-service`), `.imz` içeriğini çıkarma. `SignatureCheck.isLegallyValid` = ETSI TOTAL_PASSED + zincir
+    güven listesine ulaşıyor + imzalayan sertifikası 5070 nitelikli. `TokenExtractionStrategy.EXTRACT_CERTIFICATES_ONLY`
+    olmadan tanılama verisinde sertifika içeriği gelmez.
+  - `TrustAnchors` + `core/src/main/resources/trust/`: BTK yetkili ESHS kökleri (DER) ve `anchors.properties`
+    (dosya=SHA-256, her kökün kaynağı yorumda). Yükleme sırasında özet uyuşmazsa hata. **Kök ekleme kuralı:**
+    Kamu SM ulusal deposunda (`sertifikalar.kamusm.gov.tr/depo/SertifikaDeposu.xml`) bulunmalı ya da sağlayıcının
+    kendi HTTPS sitesinde yayımladığı özetle eşleşmeli. BTK özet yayımlamıyor. Dışarıda bırakılanlar: TürkTrust H8
+    ve ArkSigner RSA S1 (bağımsız teyit yok), TürkTrust H9 (e-mühür), EGMSM (siteye erişilemedi).
 - `app/`: Compose Desktop (Material3). `AppState` tüm durum ve aksiyonları tutar; `ui/` saf composable'lar
   (`App(state)` kök). Tüm kart çağrıları tek thread'li `card` dispatcher'ında.
-  Akış: kart seçimi (2 sn'de bir otomatik tarama, tek kart otomatik seçilir) → dosyalar + biçim →
+  Sekmeler: İmzala / Doğrula (doğrulama kart gerektirmez, kart ekranında "Kart olmadan imza doğrula").
+  İmza akışı: kart seçimi (2 sn'de bir otomatik tarama, tek kart otomatik seçilir) → dosyalar + biçim →
   "İmzala" → onay penceresi (imzalayan, dosya özeti, PIN uyarıları, PIN, "inceledim" onayı) → tek login,
   tüm dosyalar, oturum kapanır → sonuç ekranı. Pencereler in-tree overlay (native dialog değil).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
@@ -94,6 +105,19 @@ dist/linux_arm64/run.sh
 - SunPKCS11 ile `SHA256withRSA` sorunsuz çalışıyor (karta özel mekanizma ayarı gerekmedi).
 - Kartta tek imza anahtarı/sertifikası var.
 - DSS 6.1 PDFBox 2.0.x getirir (3.x değil). Yazılım anahtarı sınıfı `Pkcs12SignatureToken` (`KeyStoreSignatureToken` yok).
+- Kullanıcının kartı E-GÜVEN NES S7 hiyerarşisinde (Kamu SM değil): ara `ECCNESS7`, kök `E-GÜVEN Kök ESHS S7`.
+  Sertifikada `QcCompliance` (`0.4.0.1862.1.1`) ve 5070 QC beyanı, OCSP `ocsp384.e-guven.com`.
+- Uygulamanın attığı imzalar şu an PAdES/CAdES B-B (zaman damgası yok): doğrulamada imza zamanı "kanıtlanmıyor"
+  görünür, sertifika süresi dolunca OUT_OF_BOUNDS_NO_POE ile belirsize düşer. Çözüm yol haritası 4. adım.
+- **Görünmez imza alanı sıfır boyutlu olmamalı:** DSS'in varsayılan görünmez imzası `/Rect [0 0 0 0]` yazar. Bazı
+  PDF okuyucular (kullanıcının Mac'teki okuyucusu) kesirli A4 sayfalarda (`595.27 x 841.89`, yaygın üretici çıktısı)
+  bu alanı "Unsigned Signature Field" gösterir; tam sayı boyutlarda (`595 x 842`) sorun yok. Kullanıcıyla adım adım
+  test edilerek bulundu (alt filtre, `/OpenAction`, belge `/ID`, içerik, yazı tipi, dosya boyutu elendi).
+  Çözüm `DocumentSigner`: ilk sayfanın üst kenarında 1x1 pt şeffaf PNG görünümlü alan; mevcut annotasyonlarla
+  çakışmayan ilk boş nokta seçilir (DSS çakışan alanı reddeder, üst üste imzayı kırar).
+- Kamu SM mali mühür: politika `2.16.792.1.2.1.1.5.7.4.1`, 5070 QC beyanı ve `nonRepudiation` yok, kök
+  "KamuSM Kurumsal Kök" S1/S2 (güven listesinde). Hukuki dayanak 509 Sıra No'lu VUK Genel Tebliği; doğrulamada
+  `isValidFiscalSeal` ile 5070'ten ayrı gösterilir. Kamu SM bazı özetleri DER değil sunulan PEM dosyası üzerinden yayımlıyor.
 - Kart tespiti gerçek AKİS kartla doğrulandı: PIN'siz slot/token okuma, slot ID 1, açık imza sertifikası okunabiliyor.
 - Headless ekran görüntüsü: `ImageComposeScene` + Skiko linux; imajda `libgl1` ve font (Inter/DejaVu) gerekir.
 - Compose 1.7.3'te sürükle-bırak: `Modifier.dragAndDropTarget` + `event.nativeEvent as DropTargetDropEvent`
@@ -126,7 +150,8 @@ dist/linux_arm64/run.sh
 
 1. **Tamamlandı (AKİS kartla doğrulandı):** Proje iskeleti (`core` + `app`), Compose arayüzü: dosya seç/sürükle-bırak, kart ve sertifika
    listesi (okunabilir ad, TC no maskeli), PIN girişi, PAdES/CAdES seçimi, sonuç ekranı.
-2. İmza doğrulama ekranı; Kamu SM kök/ara sertifikaları uygulamaya gömülü güven listesi.
+2. **Yapıldı, gerçek imzalı dosyayla denenmesi gerekiyor:** İmza doğrulama (Doğrula sekmesi), BTK yetkili ESHS
+   kökleriyle gömülü güven listesi, 5070 nitelik kontrolü, `.imz` içeriğini açma/kaydetme.
 3. Görünür imza ve sayfadaki konum seçimi; `.imz` dosyasını açıp içeriği gösterme.
 4. Zaman damgası (Kamu SM; standart dışı kimlik doğrulama başlığı gerektirebilir), PAdES/CAdES B-LT/LTA.
 5. Seri ve paralel imza.

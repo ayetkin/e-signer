@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -21,13 +22,25 @@ import sh.yetkin.esigner.core.FormatMode
 import sh.yetkin.esigner.core.PinStatus
 import sh.yetkin.esigner.core.Pkcs11Library
 import sh.yetkin.esigner.core.SigningError
+import sh.yetkin.esigner.core.SignatureValidator
 import sh.yetkin.esigner.core.SigningException
+import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.formatFor
 import sh.yetkin.esigner.core.outputFileFor
 import java.io.File
 import java.util.concurrent.Executors
 
 enum class Screen { CARD_SELECT, WORKSPACE }
+
+enum class Tab { SIGN, VERIFY }
+
+sealed interface VerifyState {
+    data object Running : VerifyState
+    data class Done(val report: ValidationReport) : VerifyState
+    data class Failed(val error: UiError) : VerifyState
+}
+
+data class VerifyItem(val file: File, val state: VerifyState)
 
 sealed interface ScanState {
     data object Searching : ScanState
@@ -62,9 +75,13 @@ class AppState(private val scope: CoroutineScope) {
     private val cardThread = Executors.newSingleThreadExecutor { Thread(it, "card").apply { isDaemon = true } }
         .asCoroutineDispatcher()
     private val signer = DocumentSigner()
+    private val validator by lazy { SignatureValidator() }
 
     var screen by mutableStateOf(Screen.CARD_SELECT)
         internal set
+    var tab by mutableStateOf(Tab.SIGN)
+        internal set
+    val verifyItems = mutableStateListOf<VerifyItem>()
     var scan by mutableStateOf<ScanState>(ScanState.Searching)
         internal set
     var selectedSlot by mutableStateOf<Long?>(null)
@@ -121,13 +138,80 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun continueWithCard() {
-        if (selectedCard != null) screen = Screen.WORKSPACE
+        if (selectedCard != null) {
+            tab = Tab.SIGN
+            screen = Screen.WORKSPACE
+        }
+    }
+
+    /** Validation needs no card. */
+    fun verifyWithoutCard() {
+        tab = Tab.VERIFY
+        screen = Screen.WORKSPACE
+    }
+
+    fun selectTab(value: Tab) {
+        if (flow is SignFlow.Signing || flow is SignFlow.Confirm) return
+        tab = value
+        if (value == Tab.SIGN && selectedCard == null) screen = Screen.CARD_SELECT
     }
 
     fun changeCard() {
         if (flow is SignFlow.Signing) return
         flow = SignFlow.Idle
         screen = Screen.CARD_SELECT
+    }
+
+    // Validation
+
+    fun addForVerify(newFiles: List<File>) {
+        newFiles.map { it.absoluteFile }.filter { it.isFile && verifyItems.none { item -> item.file == it } }.forEach { file ->
+            verifyItems.add(VerifyItem(file, VerifyState.Running))
+            scope.launch {
+                val result = try {
+                    VerifyState.Done(withContext(Dispatchers.IO) { validator.validate(file) })
+                } catch (e: SigningException) {
+                    VerifyState.Failed(UiError.of(e))
+                } catch (e: Exception) {
+                    VerifyState.Failed(UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
+                } catch (e: LinkageError) {
+                    // One file's validation must never crash the app.
+                    VerifyState.Failed(UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
+                }
+                val index = verifyItems.indexOfFirst { it.file == file }
+                if (index >= 0) verifyItems[index] = VerifyItem(file, result)
+            }
+        }
+    }
+
+    fun removeVerify(file: File) {
+        verifyItems.removeAll { it.file == file }
+    }
+
+    fun clearVerify() {
+        verifyItems.clear()
+    }
+
+    /** Saves the signed content of an .imz next to where the user chose. Returns an error to show, if any. */
+    suspend fun extractContent(file: File, target: File): UiError? = withContext(Dispatchers.IO) {
+        try {
+            validator.extractOriginal(file, target)
+            null
+        } catch (e: SigningException) {
+            UiError.of(e)
+        }
+    }
+
+    /** Extracts the signed content of an .imz to a temporary folder and opens it. */
+    suspend fun openContent(file: File): Pair<File?, UiError?> = withContext(Dispatchers.IO) {
+        val dir = java.nio.file.Files.createTempDirectory("esigner").toFile().apply { deleteOnExit() }
+        val target = File(dir, contentName(file)).apply { deleteOnExit() }
+        try {
+            validator.extractOriginal(file, target)
+            target to null
+        } catch (e: SigningException) {
+            null to UiError.of(e)
+        }
     }
 
     // Files
@@ -224,3 +308,7 @@ class AppState(private val scope: CoroutineScope) {
         cardThread.close()
     }
 }
+
+/** "report.pdf.imz" -> "report.pdf"; anything else gets "-content" appended to its name. */
+fun contentName(file: File): String =
+    if (file.extension.equals("imz", ignoreCase = true)) file.nameWithoutExtension else file.name + "-content"

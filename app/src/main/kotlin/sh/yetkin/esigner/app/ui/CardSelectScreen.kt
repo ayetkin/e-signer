@@ -124,7 +124,10 @@ fun CardSelectScreen(state: AppState) {
                 Spacer(Modifier.height(12.dp))
                 Banner(str("pin.lockedHelp"), Tone.ERROR)
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
+            TextButton(onClick = state::verifyWithoutCard, modifier = Modifier.fillMaxWidth()) {
+                Text(str("cardSelect.verifyWithoutCard"))
+            }
             AdvancedSettings(state)
         }
     }
@@ -178,8 +181,8 @@ private fun CardOption(card: DetectedCard, selected: Boolean, showRadio: Boolean
         Avatar(name, 44.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            holder?.maskedNationalId?.let {
-                Text(str("card.nationalId", it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            holder?.let { idLine(it) }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (holder != null) {
                 Text(

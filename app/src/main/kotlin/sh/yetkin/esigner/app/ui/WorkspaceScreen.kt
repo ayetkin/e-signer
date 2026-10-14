@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.SignFlow
+import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.FormatMode
 import sh.yetkin.esigner.core.SignatureFormat
@@ -58,21 +59,34 @@ import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 
 @Composable
-fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit) {
+fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> File?) {
     var hovering by remember { mutableStateOf(false) }
+    val verify = state.tab == Tab.VERIFY
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopBar(state)
         Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .fileDropTarget(onHover = { hovering = it }, onFiles = state::addFiles)
+                .fileDropTarget(
+                    onHover = { hovering = it },
+                    onFiles = { if (state.tab == Tab.VERIFY) state.addForVerify(it) else state.addFiles(it) },
+                )
                 .padding(24.dp),
         ) {
-            if (state.files.isEmpty()) DropZone(hovering, pickFiles, Modifier.fillMaxSize())
-            else FileList(state, hovering, pickFiles, Modifier.fillMaxSize())
+            when {
+                verify -> VerifyPane(state, hovering, pickFiles, saveFile, Modifier.fillMaxSize())
+                state.files.isEmpty() -> DropZone(
+                    hovering = hovering,
+                    title = str(if (hovering) "files.dropNow" else "files.dropTitle"),
+                    body = str("files.dropBody"),
+                    pickFiles = pickFiles,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                else -> FileList(state, hovering, pickFiles, Modifier.fillMaxSize())
+            }
         }
-        BottomBar(state)
+        if (!verify) BottomBar(state)
     }
 }
 
@@ -88,7 +102,13 @@ fun TopBar(state: AppState) {
                 str("app.name"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = 12.dp, end = 28.dp),
+            )
+            Segmented(
+                listOf(Tab.SIGN to str("tab.sign"), Tab.VERIFY to str("tab.verify")),
+                state.tab,
+                enabled = state.flow !is SignFlow.Signing && state.flow !is SignFlow.Confirm,
+                onSelect = state::selectTab,
             )
             Spacer(Modifier.weight(1f))
             LanguageSwitch(state.language, state::switchLanguage)
@@ -110,23 +130,25 @@ private fun CardChip(state: AppState) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (card == null) {
-            Chip(str("card.removed"), Tone.WARNING)
+            Chip(str(if (state.selectedSlot == null) "card.none" else "card.removed"), Tone.WARNING)
         } else {
             val name = card.holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
             Avatar(name, 30.dp)
             Column {
                 Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                card.holder?.maskedNationalId?.let {
-                    Text(str("card.nationalId", it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                card.holder?.let { idLine(it) }?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        TextButton(onClick = state::changeCard, enabled = state.flow !is SignFlow.Signing) { Text(str("card.change")) }
+        TextButton(onClick = state::changeCard, enabled = state.flow !is SignFlow.Signing) {
+            Text(str(if (state.selectedSlot == null) "card.choose" else "card.change"))
+        }
     }
 }
 
 @Composable
-private fun DropZone(hovering: Boolean, pickFiles: () -> Unit, modifier: Modifier) {
+fun DropZone(hovering: Boolean, title: String, body: String, pickFiles: () -> Unit, modifier: Modifier) {
     val accent = if (hovering) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
     Box(
         modifier
@@ -145,8 +167,8 @@ private fun DropZone(hovering: Boolean, pickFiles: () -> Unit, modifier: Modifie
                 Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
             }
             Spacer(Modifier.height(8.dp))
-            Text(str(if (hovering) "files.dropNow" else "files.dropTitle"), style = MaterialTheme.typography.titleMedium)
-            Text(str("files.dropBody"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Button(onClick = pickFiles) { Text(str("files.choose")) }
         }

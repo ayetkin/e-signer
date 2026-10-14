@@ -12,7 +12,11 @@ import sh.yetkin.esigner.app.ui.AppTheme
 import sh.yetkin.esigner.core.CardScan
 import sh.yetkin.esigner.core.CertificateInfo
 import sh.yetkin.esigner.core.DetectedCard
+import sh.yetkin.esigner.core.IdType
 import sh.yetkin.esigner.core.PinStatus
+import sh.yetkin.esigner.core.SignatureCheck
+import sh.yetkin.esigner.core.ValidationReport
+import sh.yetkin.esigner.core.Verdict
 import sh.yetkin.esigner.core.SigningError
 import java.io.File
 import java.time.Instant
@@ -116,6 +120,60 @@ class ScreenshotTest {
                 ready()
                 files.addAll(sampleFiles())
                 scan = ScanState.Ready(CardScan(1, emptyList()))
+            })
+        }
+        for (lang in Language.entries) {
+            val l = lang.tag
+            shot("$l-20-verify-empty", state(lang) { screen = Screen.WORKSPACE; tab = Tab.VERIFY })
+            shot("$l-21-verify-results", state(lang) {
+                screen = Screen.WORKSPACE
+                tab = Tab.VERIFY
+                val f = sampleFiles()
+                val legal = SignatureCheck(
+                    signer = holder.copy(isQualified5070 = true),
+                    verdict = Verdict.VALID,
+                    subIndication = null,
+                    trustedChain = true,
+                    claimedSigningTime = Instant.parse("2026-10-14T09:30:00Z"),
+                    timestampTime = null,
+                    format = "PAdES-BASELINE-B",
+                    messages = listOf("The signature does not contain a timestamp."),
+                )
+                val seal = legal.copy(
+                    signer = holder.copy(
+                        commonName = "SAMPLE COMPANY INC",
+                        maskedNationalId = "12******90",
+                        idType = IdType.TAX_ID,
+                        isFiscalSeal = true,
+                        isQualified5070 = false,
+                    ),
+                )
+                verifyItems.addAll(
+                    listOf(
+                        VerifyItem(f[0], VerifyState.Done(ValidationReport(f[0], listOf(seal, legal), false))),
+                        VerifyItem(
+                            f[1],
+                            VerifyState.Done(
+                                ValidationReport(
+                                    f[1],
+                                    listOf(legal.copy(verdict = Verdict.INVALID, subIndication = "HASH_FAILURE")),
+                                    false,
+                                ),
+                            ),
+                        ),
+                        VerifyItem(f[2], VerifyState.Running),
+                        VerifyItem(
+                            f[3],
+                            VerifyState.Done(
+                                ValidationReport(
+                                    f[3],
+                                    listOf(legal.copy(verdict = Verdict.INDETERMINATE, subIndication = "TRY_LATER")),
+                                    true,
+                                ),
+                            ),
+                        ),
+                    ),
+                )
             })
         }
         shot("dark-11-workspace-files", state(Language.EN) {

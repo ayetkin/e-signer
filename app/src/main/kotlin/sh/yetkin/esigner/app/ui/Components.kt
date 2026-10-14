@@ -44,6 +44,7 @@ import sh.yetkin.esigner.app.i18n.Language
 import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.CertificateInfo
+import sh.yetkin.esigner.core.IdType
 import sh.yetkin.esigner.core.PinStatus
 import java.awt.Desktop
 import java.io.File
@@ -219,6 +220,19 @@ fun formatDate(instant: Instant): String =
         .withLocale(LocalStrings.current.language.locale)
         .withZone(ZoneId.systemDefault())
         .format(instant)
+
+/** "National ID 12*******01" or "Tax ID 12******90", depending on what the certificate carries. */
+@Composable
+fun idLine(info: CertificateInfo): String? = info.maskedNationalId?.let {
+    str(
+        when (info.idType) {
+            IdType.NATIONAL_ID -> "card.nationalId"
+            IdType.TAX_ID -> "card.taxId"
+            IdType.OTHER -> "card.otherId"
+        },
+        it,
+    )
+}
 
 @Composable
 fun PinStatusChip(status: PinStatus) {

@@ -2,6 +2,8 @@ package sh.yetkin.esigner.core
 
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField
 import org.bouncycastle.cms.CMSSignedData
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder
 import java.io.File
@@ -39,6 +41,21 @@ class DocumentSignerTest {
 
         val second = signer.sign(first, SignatureFormat.PADES, token, key)
         assertEquals(2, signatureCount(second))
+    }
+
+    @Test
+    fun `signature widget is never zero-size, even on fractional A4 pages`() {
+        val input = File(dir, "a4.pdf").also { file ->
+            PDDocument().use { it.addPage(PDPage(PDRectangle(595.27f, 841.89f))); it.save(file) }
+        }
+        val signed = signer.sign(input, SignatureFormat.PADES, token, key)
+        PDDocument.load(signed).use { doc ->
+            val field = doc.documentCatalog.acroForm.fields.filterIsInstance<PDSignatureField>().single()
+            val rect = field.widgets.single().rectangle
+            assertTrue(rect.width > 0f && rect.height > 0f, "zero-size widget: $rect")
+            assertTrue(rect.width <= 1f && rect.height <= 1f, "widget must stay invisible: $rect")
+            assertTrue(field.signature != null)
+        }
     }
 
     @Test

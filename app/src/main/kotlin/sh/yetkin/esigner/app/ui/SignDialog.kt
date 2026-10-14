@@ -99,8 +99,8 @@ private fun Signer(state: AppState) {
         Column(Modifier.weight(1f)) {
             Text(str("sign.dialog.signer"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            card.holder?.maskedNationalId?.let {
-                Text(str("card.nationalId", it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            card.holder?.let { idLine(it) }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
