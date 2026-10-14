@@ -28,3 +28,17 @@ fun outputFileFor(input: File, format: SignatureFormat, padesSuffix: String = "-
         SignatureFormat.CADES -> File(file.parentFile, file.name + ".imz")
     }
 }
+
+/** ETSI baseline level of new signatures. */
+enum class SigningLevel {
+    /** Signature only; the signing time is a claim of the signer's computer. */
+    BASELINE_B,
+
+    /** Adds a signature timestamp from a TSA, proving the signature existed at that time. */
+    BASELINE_T,
+
+    /** B-T plus the certificate chains and OCSP/CRL responses, so the signature stays verifiable offline and after expiry. */
+    BASELINE_LT;
+
+    val needsTimestamp: Boolean get() = this != BASELINE_B
+}

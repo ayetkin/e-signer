@@ -1,7 +1,10 @@
 package sh.yetkin.esigner.core
 
-/** Error codes; the UI maps them to localized text. */
-enum class SigningError(val isCardError: Boolean) {
+/**
+ * Error codes; the UI maps them to localized text. [stopsBatch]: the remaining files of a batch would
+ * fail the same way (card or timestamp service problem), so they are not attempted.
+ */
+enum class SigningError(val isCardError: Boolean, val stopsBatch: Boolean) {
     LIBRARY_NOT_FOUND(false),
     LIBRARY_LOAD_FAILED(false),
     PIN_INCORRECT(true),
@@ -17,6 +20,16 @@ enum class SigningError(val isCardError: Boolean) {
     UNEXPECTED(false),
     NOT_SIGNED(false),
     NO_ORIGINAL_CONTENT(false),
+    TIMESTAMP_NOT_CONFIGURED(false, stopsBatch = true),
+    /** Network error, timeout or invalid URL. */
+    TIMESTAMP_UNREACHABLE(false, stopsBatch = true),
+    /** Wrong credentials or no remaining balance. */
+    TIMESTAMP_REJECTED(false, stopsBatch = true),
+    TIMESTAMP_FAILED(false, stopsBatch = true),
+    /** B-LT: certificate status (OCSP/CRL) could not be fetched for the signer or the TSA. */
+    REVOCATION_UNAVAILABLE(false, stopsBatch = true);
+
+    constructor(isCardError: Boolean) : this(isCardError, isCardError)
 }
 
 /**
@@ -30,6 +43,8 @@ class SigningException(
 ) : Exception(if (subject == null) error.name else "${error.name}: $subject", cause) {
 
     val isCardError: Boolean get() = error.isCardError
+
+    val stopsBatch: Boolean get() = error.stopsBatch
 
     /** Technical cause chain for a "details" view. Never contains the PIN. */
     val technicalDetail: String?

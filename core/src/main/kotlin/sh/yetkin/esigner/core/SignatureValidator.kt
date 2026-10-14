@@ -3,14 +3,6 @@ package sh.yetkin.esigner.core
 import eu.europa.esig.dss.enumerations.Indication
 import eu.europa.esig.dss.enumerations.TokenExtractionStrategy
 import eu.europa.esig.dss.model.FileDocument
-import eu.europa.esig.dss.model.x509.CertificateToken
-import eu.europa.esig.dss.service.crl.OnlineCRLSource
-import eu.europa.esig.dss.service.http.commons.CommonsDataLoader
-import eu.europa.esig.dss.service.http.commons.OCSPDataLoader
-import eu.europa.esig.dss.service.ocsp.OnlineOCSPSource
-import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier
-import eu.europa.esig.dss.spi.x509.CommonTrustedCertificateSource
-import eu.europa.esig.dss.spi.x509.aia.DefaultAIASource
 import eu.europa.esig.dss.validation.SignedDocumentValidator
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -129,40 +121,13 @@ class SignatureValidator(
         } catch (e: Exception) {
             throw SigningException(SigningError.NOT_SIGNED, file.name, e)
         }
-        validator.setCertificateVerifier(verifier())
+        validator.setCertificateVerifier(certificateVerifier(anchors, online))
         // Certificate binaries in the diagnostic data, to read the signer's name and QC statements.
         validator.setTokenExtractionStrategy(TokenExtractionStrategy.EXTRACT_CERTIFICATES_ONLY)
         return validator
     }
 
-    private fun verifier() = CommonCertificateVerifier().apply {
-        setTrustedCertSources(
-            CommonTrustedCertificateSource().apply { anchors.certificates.forEach { addCertificate(CertificateToken(it)) } },
-        )
-        if (online) {
-            val loader = CommonsDataLoader().apply {
-                timeoutConnection = TIMEOUT_MS
-                timeoutResponse = TIMEOUT_MS
-            }
-            val ocspLoader = OCSPDataLoader().apply {
-                timeoutConnection = TIMEOUT_MS
-                timeoutResponse = TIMEOUT_MS
-            }
-            aiaSource = DefaultAIASource(loader)
-            ocspSource = OnlineOCSPSource(ocspLoader)
-            crlSource = OnlineCRLSource(loader)
-        } else {
-            aiaSource = null
-            ocspSource = null
-            crlSource = null
-        }
-    }
-
     private fun parseCertificate(bytes: ByteArray): X509Certificate? = runCatching {
         CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(bytes)) as X509Certificate
     }.getOrNull()
-
-    private companion object {
-        const val TIMEOUT_MS = 10_000
-    }
 }

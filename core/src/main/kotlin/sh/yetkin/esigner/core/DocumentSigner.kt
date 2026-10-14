@@ -1,5 +1,6 @@
 package sh.yetkin.esigner.core
 
+import eu.europa.esig.dss.alert.exception.AlertException
 import eu.europa.esig.dss.cades.CAdESSignatureParameters
 import eu.europa.esig.dss.cades.signature.CAdESService
 import eu.europa.esig.dss.enumerations.DigestAlgorithm
@@ -15,7 +16,8 @@ import eu.europa.esig.dss.pades.SignatureFieldParameters
 import eu.europa.esig.dss.pades.SignatureImageParameters
 import eu.europa.esig.dss.pades.signature.PAdESService
 import eu.europa.esig.dss.signature.DocumentSignatureService
-import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier
+import eu.europa.esig.dss.spi.validation.CertificateVerifier
+import eu.europa.esig.dss.spi.x509.tsp.TSPSource
 import eu.europa.esig.dss.token.DSSPrivateKeyEntry
 import eu.europa.esig.dss.token.SignatureTokenConnection
 import java.awt.image.BufferedImage
@@ -30,10 +32,18 @@ import org.apache.pdfbox.pdmodel.PDDocument
  *
  * The flow is the DSS three-step one: data to sign -> raw signature from the token -> signed document.
  * Keeping the token step separate is what will later allow server-prepared hashes signed on the client.
+ *
+ * [level] B-T and B-LT need a [timestampSource]; the timestamp is requested in the last step, after the
+ * card has signed. B-LT also embeds the chains and OCSP/CRL responses for the signer and the TSA, fetched
+ * online through [verifier] and checked against the bundled trust anchors.
  */
-class DocumentSigner {
+class DocumentSigner(
+    private val level: SigningLevel = SigningLevel.BASELINE_B,
+    private val timestampSource: TSPSource? = null,
+    private val verifier: CertificateVerifier =
+        certificateVerifier(TrustAnchors.bundled(), online = level == SigningLevel.BASELINE_LT),
+) {
     private val digestAlgorithm = DigestAlgorithm.SHA256
-    private val verifier = CommonCertificateVerifier()
 
     fun sign(
         input: File,
@@ -44,11 +54,18 @@ class DocumentSigner {
     ): File {
         if (!input.isFile) throw SigningException(SigningError.FILE_NOT_FOUND, input.name)
         if (output.exists()) throw SigningException(SigningError.OUTPUT_EXISTS, output.name)
+        if (level.needsTimestamp && timestampSource == null) throw SigningException(SigningError.TIMESTAMP_NOT_CONFIGURED)
 
         val document = FileDocument(input)
         val signed = when (format) {
-            SignatureFormat.PADES -> signWith(PAdESService(verifier), document, padesParameters(key, freeCornerX(input)), token, key)
-            SignatureFormat.CADES -> signWith(CAdESService(verifier), document, cadesParameters(key), token, key)
+            SignatureFormat.PADES -> signWith(
+                PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
+                document, padesParameters(key, freeCornerX(input)), token, key,
+            )
+            SignatureFormat.CADES -> signWith(
+                CAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
+                document, cadesParameters(key), token, key,
+            )
         }
         writeAtomically(signed, output)
         return output
@@ -71,7 +88,11 @@ class DocumentSigner {
     }
 
     private fun padesParameters(key: DSSPrivateKeyEntry, widgetX: Float) = PAdESSignatureParameters().apply {
-        signatureLevel = SignatureLevel.PAdES_BASELINE_B
+        signatureLevel = when (level) {
+            SigningLevel.BASELINE_B -> SignatureLevel.PAdES_BASELINE_B
+            SigningLevel.BASELINE_T -> SignatureLevel.PAdES_BASELINE_T
+            SigningLevel.BASELINE_LT -> SignatureLevel.PAdES_BASELINE_LT
+        }
         digestAlgorithm = this@DocumentSigner.digestAlgorithm
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
@@ -95,7 +116,11 @@ class DocumentSigner {
     }
 
     private fun cadesParameters(key: DSSPrivateKeyEntry) = CAdESSignatureParameters().apply {
-        signatureLevel = SignatureLevel.CAdES_BASELINE_B
+        signatureLevel = when (level) {
+            SigningLevel.BASELINE_B -> SignatureLevel.CAdES_BASELINE_B
+            SigningLevel.BASELINE_T -> SignatureLevel.CAdES_BASELINE_T
+            SigningLevel.BASELINE_LT -> SignatureLevel.CAdES_BASELINE_LT
+        }
         signaturePackaging = SignaturePackaging.ENVELOPING
         digestAlgorithm = this@DocumentSigner.digestAlgorithm
         signingCertificate = key.certificate
@@ -131,9 +156,19 @@ class DocumentSigner {
         }
     }
 
+    /**
+     * Document steps. A timestamp failure surfaces from inside DSS, possibly wrapped; a DSS alert during
+     * B-LT means revocation data was missing. Anything else is a problem with the file.
+     */
     private inline fun <T> fileStep(block: () -> T): T = try {
         block()
     } catch (e: Exception) {
+        val chain = generateSequence<Throwable>(e) { it.cause }
+        chain.filterIsInstance<SigningException>().firstOrNull()?.let { throw it }
+        val alert = chain.filterIsInstance<AlertException>().firstOrNull()
+        if (alert != null && level == SigningLevel.BASELINE_LT && "revocation" in alert.message.orEmpty().lowercase()) {
+            throw SigningException(SigningError.REVOCATION_UNAVAILABLE, cause = e)
+        }
         throw SigningException(SigningError.FILE_UNSUPPORTED, cause = e)
     }
 
