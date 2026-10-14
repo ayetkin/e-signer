@@ -5,3 +5,4 @@
 .gradle-home
 dist
 eimza-test
+vendor/target-jdk
