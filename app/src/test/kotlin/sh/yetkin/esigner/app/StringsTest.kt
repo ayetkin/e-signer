@@ -3,6 +3,7 @@ package sh.yetkin.esigner.app
 import sh.yetkin.esigner.app.i18n.Language
 import sh.yetkin.esigner.app.i18n.Strings
 import sh.yetkin.esigner.core.SigningError
+import sh.yetkin.esigner.core.SigningLevel
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +36,16 @@ class StringsTest {
     fun `every error code has a message`() {
         val keys = bundles.getValue(Language.EN).keys
         SigningError.entries.forEach { assertTrue("error.${it.name}" in keys, it.name) }
+    }
+
+    @Test
+    fun `every level and authentication type has text`() {
+        val keys = bundles.getValue(Language.EN).keys
+        SigningLevel.entries.forEach {
+            assertTrue("level.${it.name}" in keys, it.name)
+            assertTrue("level.${it.name}.hint" in keys, it.name)
+        }
+        TsaAuthType.entries.forEach { assertTrue("settings.tsa.auth.${it.name}" in keys, it.name) }
     }
 
     @Test

@@ -133,6 +133,11 @@ private fun FileSummary(state: AppState) {
         if (state.mode == FormatMode.AUTO && pades > 0) {
             Text(str("sign.dialog.padesNote"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Text(
+            str("sign.dialog.level", levelSummary(state.settings)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

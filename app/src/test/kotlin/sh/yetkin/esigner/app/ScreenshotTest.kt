@@ -18,6 +18,7 @@ import sh.yetkin.esigner.core.SignatureCheck
 import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.Verdict
 import sh.yetkin.esigner.core.SigningError
+import sh.yetkin.esigner.core.SigningLevel
 import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -49,7 +50,7 @@ class ScreenshotTest {
     ).map { (name, size) -> File(docs, name).apply { writeBytes(ByteArray(size)) } }
 
     private fun state(language: Language, setup: AppState.() -> Unit): AppState =
-        AppState(CoroutineScope(Dispatchers.Unconfined)).apply {
+        AppState(CoroutineScope(Dispatchers.Unconfined), persistSettings = false).apply {
             switchLanguageForTest(language)
             setup()
         }
@@ -113,6 +114,31 @@ class ScreenshotTest {
                         FileResult(f[1], File(docs, "Board decision-signed.pdf")),
                         FileResult(f[2], null, UiError(SigningError.OUTPUT_EXISTS, "Invoice-1042.xml.imz")),
                         FileResult(f[3], File(docs, "Technical specification v3.docx.imz")),
+                    ),
+                )
+            })
+            val kamuSm: AppState.() -> Unit = {
+                settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
+            }
+            shot("$l-17-settings-kamusm", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); settingsOpen = true })
+            shot("$l-18-settings-standard", state(lang) { ready(); files.addAll(sampleFiles()); settingsOpen = true })
+            shot("$l-19-workspace-tsa-missing", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                settings.setForTest(SigningLevel.BASELINE_LT)
+            })
+            shot("$l-1a-dialog-timestamped", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); flow = SignFlow.Confirm() })
+            shot("$l-1b-results-tsa-rejected", state(lang) {
+                ready()
+                kamuSm()
+                val f = sampleFiles()
+                files.addAll(f)
+                flow = SignFlow.Finished(
+                    listOf(
+                        FileResult(f[0], null, UiError(SigningError.TIMESTAMP_REJECTED, "HTTP 401")),
+                        FileResult(f[1], null, skipped = true),
+                        FileResult(f[2], null, skipped = true),
+                        FileResult(f[3], null, skipped = true),
                     ),
                 )
             })
@@ -181,6 +207,14 @@ class ScreenshotTest {
             selectedSlot = 1
             screen = Screen.WORKSPACE
             files.addAll(sampleFiles())
+        }, dark = true)
+        shot("dark-17-settings-kamusm", state(Language.EN) {
+            scan = ScanState.Ready(CardScan(1, listOf(card)))
+            selectedSlot = 1
+            screen = Screen.WORKSPACE
+            files.addAll(sampleFiles())
+            settings.setForTest(SigningLevel.BASELINE_LT, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
+            settingsOpen = true
         }, dark = true)
         shot("dark-03-card-found", state(Language.EN) {
             scan = ScanState.Ready(CardScan(1, listOf(card)))

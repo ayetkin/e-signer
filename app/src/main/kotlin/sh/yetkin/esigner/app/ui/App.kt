@@ -27,6 +27,7 @@ fun App(state: AppState, pickFiles: () -> Unit, saveFile: (java.io.File) -> java
                     else -> {
                         WorkspaceScreen(state, pickFiles, saveFile)
                         SignDialog(state)
+                        SettingsDialog(state)
                     }
                 }
             }

@@ -57,7 +57,7 @@ sealed interface SignFlow {
     data class Finished(val results: List<FileResult>) : SignFlow
 }
 
-/** [skipped]: not attempted because the card failed on an earlier file. */
+/** [skipped]: not attempted because the card or the timestamp service failed on an earlier file. */
 data class FileResult(val input: File, val output: File?, val error: UiError? = null, val skipped: Boolean = false)
 
 /** A localizable error: the UI renders [error] with [subject]; [detail] is the technical cause chain. */
@@ -71,10 +71,9 @@ data class UiError(val error: SigningError, val subject: String? = null, val det
  * UI state and actions. Every card call (scan, login, sign) runs on one dedicated thread, since a
  * PKCS#11 module must not be used concurrently. A card session lives only for one signing run.
  */
-class AppState(private val scope: CoroutineScope) {
+class AppState(private val scope: CoroutineScope, persistSettings: Boolean = true) {
     private val cardThread = Executors.newSingleThreadExecutor { Thread(it, "card").apply { isDaemon = true } }
         .asCoroutineDispatcher()
-    private val signer = DocumentSigner()
     private val validator by lazy { SignatureValidator() }
 
     var screen by mutableStateOf(Screen.CARD_SELECT)
@@ -91,6 +90,10 @@ class AppState(private val scope: CoroutineScope) {
         private set
     val strings: Strings get() = Strings.of(language)
 
+    val settings = SigningSettings(persistSettings)
+    var settingsOpen by mutableStateOf(false)
+        internal set
+
     val files = mutableStateListOf<File>()
     var mode by mutableStateOf(FormatMode.AUTO)
     var flow by mutableStateOf<SignFlow>(SignFlow.Idle)
@@ -103,7 +106,7 @@ class AppState(private val scope: CoroutineScope) {
 
     val canSign: Boolean
         get() = files.isNotEmpty() && selectedCard?.let { it.pinStatus != PinStatus.LOCKED } == true &&
-            flow == SignFlow.Idle
+            flow == SignFlow.Idle && !settings.missingTsa
 
     // Card detection
 
@@ -229,6 +232,16 @@ class AppState(private val scope: CoroutineScope) {
         if (flow == SignFlow.Idle) files.clear()
     }
 
+    // Signature settings
+
+    fun openSettings() {
+        if (flow == SignFlow.Idle) settingsOpen = true
+    }
+
+    fun closeSettings() {
+        settingsOpen = false
+    }
+
     // Signing
 
     fun requestSign() {
@@ -254,21 +267,26 @@ class AppState(private val scope: CoroutineScope) {
         val library = libraryPath.trim()
         val padesSuffix = strings["output.padesSuffix"]
         val jobs = files.map { it to formatFor(it, mode) }
+        val level = settings.level
+        // Its own copy of the TSA password, cleared when the run ends.
+        val timestamp = settings.timestampFor()
 
         scope.launch {
             val session = try {
                 withContext(cardThread) { CardSession.open(library, card.slotId, pin) }
             } catch (e: SigningException) {
+                timestamp?.second?.clear()
                 flow = SignFlow.Confirm(error = UiError.of(e))
                 rescan() // refreshes the remaining-attempts warning
                 return@launch
             }
             val key = session.keys[session.preferredKeyIndex]
+            val signer = DocumentSigner(level, timestamp?.first)
             val results = mutableListOf<FileResult>()
-            var cardFailure = false
+            var batchStopped = false
             for ((index, job) in jobs.withIndex()) {
                 val (input, format) = job
-                if (cardFailure) {
+                if (batchStopped) {
                     results += FileResult(input, null, skipped = true)
                     continue
                 }
@@ -277,13 +295,14 @@ class AppState(private val scope: CoroutineScope) {
                     val output = outputFileFor(input, format, padesSuffix)
                     FileResult(input, withContext(cardThread) { signer.sign(input, format, session.connection, key.entry, output) })
                 } catch (e: SigningException) {
-                    cardFailure = e.isCardError
+                    batchStopped = e.stopsBatch
                     FileResult(input, null, UiError.of(e))
                 } catch (e: Exception) {
                     FileResult(input, null, UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
                 }
             }
             withContext(cardThread) { session.close() }
+            timestamp?.second?.clear()
             flow = SignFlow.Finished(results)
         }
     }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -302,6 +303,7 @@ private fun BottomBar(state: AppState) {
                 modifier = Modifier.weight(1f),
                 maxLines = 2,
             )
+            LevelButton(state, editable)
             val count = state.files.size
             Button(
                 onClick = state::requestSign,
@@ -314,6 +316,29 @@ private fun BottomBar(state: AppState) {
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
+        }
+    }
+}
+
+/** Current signature level; opens the settings. Warns when a timestamp level has no usable TSA. */
+@Composable
+private fun LevelButton(state: AppState, enabled: Boolean) {
+    val missing = state.settings.missingTsa
+    OutlinedButton(onClick = state::openSettings, enabled = enabled) {
+        Column {
+            Text(
+                str("settings.level"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                if (missing) str("level.tsaMissing") else levelSummary(state.settings),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 260.dp),
+            )
         }
     }
 }

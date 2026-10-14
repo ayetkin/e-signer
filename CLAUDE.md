@@ -16,7 +16,19 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
   - `DocumentSigner`: herhangi bir `SignatureTokenConnection` ile imzalar. DSS'in üç adımlı akışı
     (`getDataToSign` → `token.sign` → `signDocument`) ayrı tutuldu, ileride bölünmüş imzalama buraya oturacak.
     Çıktı önce geçici dosyaya yazılır, sonra yerine taşınır. Var olan dosyanın üzerine asla yazmaz.
-    PAdES çıktı soneki (`-imzali`/`-signed`) arayüz dilinden gelir.
+    PAdES çıktı soneki (`-imzali`/`-signed`) arayüz dilinden gelir. `SigningLevel` (B-B / B-T / B-LT) ve `TSPSource`
+    kurucudan gelir; zaman damgası son adımda (kart imzaladıktan sonra) alınır. B-LT zincirleri ve OCSP/CRL'i
+    `certificateVerifier(TrustAnchors.bundled(), online = true)` ile çevrimiçi toplayıp gömer.
+  - `HttpTimestampSource` (`Timestamping.kt`): RFC 3161 istemcisi (DSS `TSPSource`), her istekte nonce ve yanıt
+    eşleşme kontrolü. `TimestampAuth`: `None`, `Basic` (HTTP Basic), `KamuSm`. Parolalar `CharArray`, sahibi çağıran,
+    `clear()` ile sıfırlanır, `toString()` parolayı içermez.
+  - **Kamu SM kimlik başlığı** (`KamuSmIdentity`): HTTP başlığı `identity` = DER
+    `SEQUENCE { müşteriNo INTEGER, salt OCTET STRING, iterasyon INTEGER (100), iv OCTET STRING, şifreliÖzet OCTET STRING }`
+    hex'i. Şifreli özet: istekteki `hashedMessage`, AES-256-CBC (PKCS#7), anahtar PBKDF2-HMAC-SHA256(parola, salt, 100),
+    salt = IV (16 bayt rastgele). Yanlış parola/bakiye yoksa TSA `rejection` döner → `TIMESTAMP_REJECTED`.
+    Kaynak: açık kaynak `KilimcininKorOglu/kamusm-go` (`identity.go`); Kamu SM'nin resmi dokümanı bulunamadı,
+    gerçek hesapla henüz denenmedi. Varsayılan adres `http://zd.kamusm.gov.tr`. E-GÜVEN TSA adresi/yetkilendirmesi
+    herkese açık değil (satın alınca müşteri panelinde veriliyor); büyük olasılıkla `Basic` ya da `None` yeter.
   - `CardScanner` + `Pkcs11Scanner.java`: PIN'siz kart tespiti. JDK'nın dahili PKCS#11 sarmalayıcısıyla
     (`sun.security.pkcs11.wrapper`) slot/token bilgisi, PIN sayaç bayrakları (`COUNT_LOW`/`FINAL_TRY`/`LOCKED`) ve
     karttaki açık sertifikalar okunur. Derleme ve çalıştırmada `--add-modules jdk.crypto.cryptoki` +
@@ -24,7 +36,8 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
     Modül, SunPKCS11 ile aynı `PKCS11.getInstance` önbelleğini paylaşır (aynı init bayrakları kullanılmalı).
   - `CardSession`: tek login denemesi. Gerçek slot ID'si ile açılır (`Pkcs11SignatureToken(..., slotId, -1, "")`,
     DSS bu durumda `slot = <id>` yazar). PIN dizisinin sahipliğini alır, `close()`'da sıfırlar.
-  - `SigningException(error: SigningError, subject)`: `isCardError` ise toplu imza durur, dosya hatasıysa devam eder.
+  - `SigningException(error: SigningError, subject)`: `stopsBatch` (kart hataları + `TIMESTAMP_*`,
+    `REVOCATION_UNAVAILABLE`) ise toplu imza durur, dosya hatasıysa devam eder.
     `cardError()` SunPKCS11'in `CKR_*` kodlarını `SigningError`'a çevirir.
   - `CertificateInfo`: TC no yalnızca maskeli tutulur (`12*******01`). `isQualified5070`: sertifikada
     `2.16.792.1.61.0.1.5070.1.1` QC beyanı var (5070'e göre nitelikli sertifika).
@@ -43,6 +56,10 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
   İmza akışı: kart seçimi (2 sn'de bir otomatik tarama, tek kart otomatik seçilir) → dosyalar + biçim →
   "İmzala" → onay penceresi (imzalayan, dosya özeti, PIN uyarıları, PIN, "inceledim" onayı) → tek login,
   tüm dosyalar, oturum kapanır → sonuç ekranı. Pencereler in-tree overlay (native dialog değil).
+  - `SigningSettings`: imza seviyesi, TSA adresi, kimlik doğrulama tipi ve kullanıcı/müşteri no `java.util.prefs`'te;
+    TSA parolası yalnızca bellekte (uygulama kapanınca istenir), her imza turuna kopyası verilir ve tur bitince
+    sıfırlanır. Zaman damgalı seviyede TSA eksikse "İmzala" kapalı. Ayar penceresi `ui/SettingsDialog.kt`
+    (alt çubuktaki "İmza seviyesi" düğmesi).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
     `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
 - `tools/screenshots.Dockerfile` + `app/src/test/.../ScreenshotTest.kt`: tüm ekranları örnek verilerle
@@ -91,6 +108,9 @@ dist/linux_arm64/run.sh
   - Kilitlenen container `kill`'e yanıt vermezse host'taki `container-runtime-linux ... --uuid <id>` süreci öldürülür.
 - Skiko (Compose) native kısmı platforma özel: `-PcomposeTarget=macos-arm64|macos-x64|windows-x64|...`,
   verilmezse container'ın kendi platformu (linux) seçilir ve Mac'te çalışmaz.
+- Zaman damgası testleri ağ gerektirmez: `LocalPki` (test) loopback'te HTTP sunucusu açar; `/tsa` BouncyCastle
+  `TimeStampResponseGenerator` ile cevap verir (isteğe bağlı Kamu SM `identity` kontrolü), `/ca.crl` CA'nın CRL'i.
+  B-LT imzası çevrimdışı doğrulayıcıda VALID çıkıyor (gömülü CRL yetiyor).
 - Testler kart gerektirmez: `TestKeys` kendinden imzalı yazılım anahtarı üretir (`Pkcs12SignatureToken`),
   sahte TC no kullanır. PDF kontrolü PDFBox 2.x (`PDDocument.load`), CAdES kontrolü BouncyCastle ile.
 
@@ -112,6 +132,8 @@ dist/linux_arm64/run.sh
 - **Slot seçimi:** AKİS'in ilk slot'unun ID'si 0 değil 1. Slot'u ID ile değil sırayla seç:
   `Pkcs11SignatureToken(lib, PasswordInputCallback { pin }, -1, slotIndex, "")`
   (5 parametreli kurucu `KeyStore.PasswordProtection` değil `PasswordInputCallback` alır.)
+- DSS CRL ayrıştırıcısı ayrı modül: `dss-crl-parser-stream` olmadan CRL'e düşen doğrulama/B-LT
+  `No implementation found for ICRLUtils` ile patlar.
 - `CommonCertificateVerifier` paketi DSS 6.1'de `eu.europa.esig.dss.spi.validation`.
 - SunPKCS11 ile `SHA256withRSA` sorunsuz çalışıyor (karta özel mekanizma ayarı gerekmedi).
 - Kartta tek imza anahtarı/sertifikası var.
@@ -164,7 +186,8 @@ dist/linux_arm64/run.sh
 2. **Yapıldı, gerçek imzalı dosyayla denenmesi gerekiyor:** İmza doğrulama (Doğrula sekmesi), BTK yetkili ESHS
    kökleriyle gömülü güven listesi, 5070 nitelik kontrolü, `.imz` içeriğini açma/kaydetme.
 3. Görünür imza ve sayfadaki konum seçimi; `.imz` dosyasını açıp içeriği gösterme.
-4. Zaman damgası (Kamu SM; standart dışı kimlik doğrulama başlığı gerektirebilir), PAdES/CAdES B-LT/LTA.
+4. **Yapıldı, gerçek TSA ile denenmesi gerekiyor:** Zaman damgası (B-T), B-LT (OCSP/CRL gömülü), Kamu SM kimlik
+   başlığı, ayar penceresi. Kalan: B-LTA (arşiv zaman damgası), TSA parolasının kalıcı saklanması (karar bekliyor).
 5. Seri ve paralel imza.
 6. Paketleme ve kod imzalama (Apple notarization, Windows code signing), GitHub Actions.
 7. İleride: sunucu tarafı bölünmüş imzalama, çok kullanıcı, ticarileştirme (hukuki uyum ayrıca incelenecek).
