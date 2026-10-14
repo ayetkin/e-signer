@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -28,6 +29,9 @@ import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.formatFor
 import sh.yetkin.esigner.core.outputFileFor
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.time.Instant
 import java.util.concurrent.Executors
 
 enum class Screen { CARD_SELECT, WORKSPACE }
@@ -106,6 +110,8 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
 
     val canSign: Boolean
         get() = files.isNotEmpty() && selectedCard?.let { it.pinStatus != PinStatus.LOCKED } == true &&
+            // DSS refuses an expired certificate only after login; do not ask for the PIN in that case.
+            selectedCard?.holder?.isValidAt(Instant.now()) != false &&
             flow == SignFlow.Idle && !settings.missingTsa
 
     // Card detection
@@ -195,19 +201,28 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         verifyItems.clear()
     }
 
-    /** Saves the signed content of an .imz next to where the user chose. Returns an error to show, if any. */
+    /**
+     * Saves the signed content of an .imz where the user chose. The save dialog already confirmed replacing an
+     * existing file, so it is replaced, but only once the content is fully written. Returns an error to show, if any.
+     */
     suspend fun extractContent(file: File, target: File): UiError? = withContext(Dispatchers.IO) {
+        val temp = File(target.absoluteFile.parentFile, ".${target.name}.${System.nanoTime()}.tmp")
         try {
-            validator.extractOriginal(file, target)
+            validator.extractOriginal(file, temp)
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
             null
         } catch (e: SigningException) {
             UiError.of(e)
+        } catch (e: java.io.IOException) {
+            UiError(SigningError.WRITE_FAILED, target.name, e.toString())
+        } finally {
+            temp.delete()
         }
     }
 
     /** Extracts the signed content of an .imz to a temporary folder and opens it. */
     suspend fun openContent(file: File): Pair<File?, UiError?> = withContext(Dispatchers.IO) {
-        val dir = java.nio.file.Files.createTempDirectory("esigner").toFile().apply { deleteOnExit() }
+        val dir = Files.createTempDirectory("esigner").toFile().apply { deleteOnExit() }
         val target = File(dir, contentName(file)).apply { deleteOnExit() }
         try {
             validator.extractOriginal(file, target)
@@ -280,29 +295,33 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
                 rescan() // refreshes the remaining-attempts warning
                 return@launch
             }
-            val key = session.keys[session.preferredKeyIndex]
-            val signer = DocumentSigner(level, timestamp?.first)
             val results = mutableListOf<FileResult>()
-            var batchStopped = false
-            for ((index, job) in jobs.withIndex()) {
-                val (input, format) = job
-                if (batchStopped) {
-                    results += FileResult(input, null, skipped = true)
-                    continue
+            try {
+                val key = session.keys[session.preferredKeyIndex]
+                val signer = DocumentSigner(level, timestamp?.first)
+                var batchStopped = false
+                for ((index, job) in jobs.withIndex()) {
+                    val (input, format) = job
+                    if (batchStopped) {
+                        results += FileResult(input, null, skipped = true)
+                        continue
+                    }
+                    flow = SignFlow.Signing(index, jobs.size, input.name)
+                    results += try {
+                        val output = outputFileFor(input, format, padesSuffix)
+                        FileResult(input, withContext(cardThread) { signer.sign(input, format, session.connection, key.entry, output) })
+                    } catch (e: SigningException) {
+                        batchStopped = e.stopsBatch
+                        FileResult(input, null, UiError.of(e))
+                    } catch (e: Exception) {
+                        FileResult(input, null, UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
+                    }
                 }
-                flow = SignFlow.Signing(index, jobs.size, input.name)
-                results += try {
-                    val output = outputFileFor(input, format, padesSuffix)
-                    FileResult(input, withContext(cardThread) { signer.sign(input, format, session.connection, key.entry, output) })
-                } catch (e: SigningException) {
-                    batchStopped = e.stopsBatch
-                    FileResult(input, null, UiError.of(e))
-                } catch (e: Exception) {
-                    FileResult(input, null, UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
-                }
+            } finally {
+                // Also on an Error or cancellation: the session must close and the PIN be zeroed.
+                withContext(NonCancellable + cardThread) { session.close() }
+                timestamp?.second?.clear()
             }
-            withContext(cardThread) { session.close() }
-            timestamp?.second?.clear()
             flow = SignFlow.Finished(results)
         }
     }

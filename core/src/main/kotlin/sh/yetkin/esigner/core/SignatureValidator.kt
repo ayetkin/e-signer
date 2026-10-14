@@ -36,15 +36,22 @@ data class SignatureCheck(
     val format: String?,
     /** Validation messages from DSS (English), for a technical details view. */
     val messages: List<String>,
+    /**
+     * A later PDF revision adds annotations, changes what the pages show or makes unknown changes. The default
+     * ETSI policy only warns about this; later signatures and form fills do not count.
+     */
+    val modifiedAfterSigning: Boolean = false,
 ) {
     /**
      * A secure electronic signature in the sense of Law 5070: valid by ETSI rules, chained to a
-     * BTK-authorized provider's root and made with a qualified certificate.
+     * BTK-authorized provider's root, made with a qualified certificate and not modified afterwards.
      */
-    val isLegallyValid: Boolean get() = verdict == Verdict.VALID && trustedChain && signer?.isQualified5070 == true
+    val isLegallyValid: Boolean
+        get() = verdict == Verdict.VALID && trustedChain && !modifiedAfterSigning && signer?.isQualified5070 == true
 
     /** A valid fiscal seal (mali muhur) of an organization, governed by the Tax Procedure Law, not Law 5070. */
-    val isValidFiscalSeal: Boolean get() = verdict == Verdict.VALID && trustedChain && signer?.isFiscalSeal == true
+    val isValidFiscalSeal: Boolean
+        get() = verdict == Verdict.VALID && trustedChain && !modifiedAfterSigning && signer?.isFiscalSeal == true
 }
 
 data class ValidationReport(
@@ -92,6 +99,11 @@ class SignatureValidator(
                 format = simple.getSignatureFormat(id)?.toString(),
                 messages = (simple.getAdESValidationErrors(id) + simple.getAdESValidationWarnings(id))
                     .map { it.value }.distinct(),
+                modifiedAfterSigning = signature != null && (
+                    !signature.pdfAnnotationChanges.isNullOrEmpty() ||
+                        !signature.pdfUndefinedChanges.isNullOrEmpty() ||
+                        !signature.pdfVisualDifferenceConcernedPages.isNullOrEmpty()
+                    ),
             )
         }
         val embedded = checks.isNotEmpty() && !file.extension.equals("pdf", ignoreCase = true) &&

@@ -138,8 +138,9 @@ tools/package-mac.sh && open dist/mac/E-Imza.app
 
 - PKCS#11 kütüphanesi: macOS `/usr/local/lib/libakisp11.dylib` (universal binary: arm64 + x86_64).
   Windows'ta muhtemelen `C:\Windows\System32\akisp11.dll`, henüz doğrulanmadı.
-- **Slot seçimi:** AKİS'in ilk slot'unun ID'si 0 değil 1. Slot'u ID ile değil sırayla seç:
-  `Pkcs11SignatureToken(lib, PasswordInputCallback { pin }, -1, slotIndex, "")`
+- **Slot seçimi:** AKİS'in ilk slot'unun ID'si 0 değil 1, bu yüzden slot ID'si tahmin edilmez. `CardScanner` gerçek
+  slot ID'sini okur, `CardSession` o ID ile açılır:
+  `Pkcs11SignatureToken(lib, PasswordInputCallback { pin }, slotId, -1, "")`
   (5 parametreli kurucu `KeyStore.PasswordProtection` değil `PasswordInputCallback` alır.)
 - DSS CRL ayrıştırıcısı ayrı modül: `dss-crl-parser-stream` olmadan CRL'e düşen doğrulama/B-LT
   `No implementation found for ICRLUtils` ile patlar.

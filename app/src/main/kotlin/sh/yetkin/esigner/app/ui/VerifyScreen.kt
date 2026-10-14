@@ -63,6 +63,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
+/** Content types opened directly from an .imz; anything else is only shown in its folder. */
+private val SAFE_TO_OPEN = setOf("pdf", "txt", "xml", "png", "jpg", "jpeg", "docx", "xlsx", "pptx", "odt", "ods")
+
 /** Overall state of a file, for the chip in its header. */
 private enum class FileVerdict { LEGAL, ATTENTION, INVALID, UNSIGNED }
 
@@ -137,7 +140,8 @@ private fun VerifyCard(state: AppState, item: VerifyItem, saveFile: (File) -> Fi
                     scope.launch {
                         val (opened, error) = state.openContent(item.file)
                         actionError = error
-                        opened?.let(::openFile)
+                        // The name comes from the untrusted .imz: never hand an executable type to the OS to open.
+                        opened?.let { if (it.extension.lowercase() in SAFE_TO_OPEN) openFile(it) else revealFile(it) }
                     }
                 }) { Text(str("verify.openContent")) }
                 TextButton(onClick = {
@@ -195,6 +199,7 @@ private fun SignatureView(check: SignatureCheck) {
     val (tone, icon, headline) = when {
         check.isLegallyValid -> Triple(Tone.SUCCESS, Icons.Default.CheckCircle, str("verify.sig.legal"))
         check.isValidFiscalSeal -> Triple(Tone.SUCCESS, Icons.Default.CheckCircle, str("verify.sig.fiscalSeal"))
+        check.verdict == Verdict.VALID && check.modifiedAfterSigning -> Triple(Tone.WARNING, Icons.Default.Warning, str("verify.sig.modified"))
         check.verdict == Verdict.VALID && !check.trustedChain -> Triple(Tone.WARNING, Icons.Default.Info, str("verify.sig.untrusted"))
         check.verdict == Verdict.VALID -> Triple(Tone.WARNING, Icons.Default.Info, str("verify.sig.notQualified"))
         check.verdict == Verdict.INVALID -> Triple(Tone.ERROR, Icons.Default.Warning, str("verify.sig.invalid"))

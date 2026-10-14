@@ -2,6 +2,8 @@ package sh.yetkin.esigner.core
 
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationText
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -90,6 +92,37 @@ class SignatureValidatorTest {
         pdf.writeBytes(bytes)
         val check = validator(TestKeys.certificate).validate(pdf).signatures.single()
         assertEquals(Verdict.INVALID, check.verdict, check.messages.joinToString())
+    }
+
+    @Test
+    fun `annotation added after signing is not legally valid`() {
+        val signed = signedPdf(qualified = true)
+        val tampered = File(dir, "tampered.pdf")
+        PDDocument.load(signed).use { doc ->
+            val page = doc.getPage(0)
+            val note = PDAnnotationText().apply {
+                rectangle = PDRectangle(100f, 100f, 200f, 50f)
+                contents = "pay 1000000"
+            }
+            page.annotations = page.annotations + note
+            // PDFBox 2 writes only objects flagged as changed, and only along a flagged path from the catalog.
+            listOf(doc.documentCatalog.cosObject, doc.pages.cosObject, page.cosObject, note.cosObject)
+                .forEach { it.isNeedToBeUpdated = true }
+            tampered.outputStream().use { doc.saveIncremental(it) }
+        }
+        assertTrue("pay 1000000" in tampered.readText(Charsets.ISO_8859_1), "the annotation must reach the file")
+        val check = validator(TestKeys.qualifiedCertificate).validate(tampered).signatures.single()
+        assertTrue(check.modifiedAfterSigning, check.messages.joinToString())
+        assertFalse(check.isLegallyValid)
+    }
+
+    @Test
+    fun `a later signature keeps the earlier one legally valid`() {
+        val first = signedPdf(qualified = true)
+        val second = TestKeys.qualifiedToken().use { signer.sign(first, SignatureFormat.PADES, it, it.keys.single()) }
+        val checks = validator(TestKeys.qualifiedCertificate).validate(second).signatures
+        assertEquals(2, checks.size)
+        assertTrue(checks.all { it.isLegallyValid }, checks.joinToString { it.messages.joinToString() })
     }
 
     @Test

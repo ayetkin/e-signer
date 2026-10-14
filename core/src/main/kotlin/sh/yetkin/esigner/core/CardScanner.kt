@@ -25,8 +25,7 @@ data class DetectedCard(
     val model: String,
     val pinStatus: PinStatus,
     val holder: CertificateInfo?,
-) {
-}
+)
 
 data class CardScan(val readerCount: Int, val cards: List<DetectedCard>)
 
