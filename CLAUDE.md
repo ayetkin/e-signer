@@ -52,6 +52,17 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
 
 ## Komutlar
 
+Günlük kullanım için `Makefile` (bellek parametreleri ve mimari seçimi içinde sabit):
+
+```sh
+make build        # hedef JDK yoksa indirir, core testleri + paket -> dist/linux_<arch>/
+make run          # paketi çalıştırır (yoksa önce build)
+make test         # core testleri + app derlemesi
+make screenshots  # app testleri (i18n kontrolü + ekran görüntüleri), font imajını da hazırlar
+```
+
+Altta çalışan komutlar (tek test gibi özel durumlar için):
+
 ```sh
 # Bir kez: hedef platform JDK'sı (URL Dockerfile başında; Intel Mac için x64 + --build-arg COMPOSE_TARGET=macos-x64)
 mkdir -p vendor && curl -fL -o vendor/target-jdk.tar.gz "<temurin21 GitHub release URL>"
