@@ -1,0 +1,7 @@
+.git
+**/build
+**/.gradle
+**/.kotlin
+.gradle-home
+dist
+eimza-test

@@ -1,0 +1,9 @@
+build/
+.gradle/
+.gradle-home/
+.kotlin/
+dist/
+vendor/
+.idea/
+*.iml
+.DS_Store
