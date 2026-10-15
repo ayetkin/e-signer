@@ -56,21 +56,74 @@ class ScreenshotTest {
     ).map { (name, size) -> File(docs, name).apply { writeBytes(ByteArray(size)) } }
         .also { samplePdf(it.first()) }
 
-    /** A one-page document with a heading and some lines, so the preview has something to show. */
+    /**
+     * A one-page contract laid out like a real one: title, parties, numbered sections and a signature block at the
+     * bottom with a place for each party. [SIGNATURE_SPOT] is the empty space above the client's signature line.
+     */
     private fun samplePdf(file: File) = PDDocument().use { doc ->
         val page = PDPage(PDRectangle.A4)
         doc.addPage(page)
+        val regular = PDType1Font.HELVETICA
+        val bold = PDType1Font.HELVETICA_BOLD
+        val left = 64f
+        val width = PDRectangle.A4.width - 2 * left
         PDPageContentStream(doc, page).use { content ->
-            content.beginText()
-            content.setFont(PDType1Font.HELVETICA_BOLD, 20f)
-            content.newLineAtOffset(60f, 760f)
-            content.showText("Service Agreement")
-            content.setFont(PDType1Font.HELVETICA, 11f)
-            repeat(30) {
-                content.newLineAtOffset(0f, if (it == 0) -36f else -18f)
-                content.showText("Clause ${it + 1}. The parties agree to the terms set out in this section of the agreement.")
+            var y = 770f
+            fun text(value: String, font: PDType1Font, size: Float, x: Float = left) {
+                content.beginText()
+                content.setFont(font, size)
+                content.newLineAtOffset(x, y)
+                content.showText(value)
+                content.endText()
             }
-            content.endText()
+            fun paragraph(value: String) {
+                val lines = mutableListOf("")
+                value.split(" ").forEach { word ->
+                    val candidate = if (lines.last().isEmpty()) word else lines.last() + " " + word
+                    if (regular.getStringWidth(candidate) / 1000 * 10.5f > width) lines += word else lines[lines.lastIndex] = candidate
+                }
+                lines.forEach { text(it, regular, 10.5f); y -= 15f }
+            }
+            val title = "SERVICE AGREEMENT"
+            text(title, bold, 16f, (PDRectangle.A4.width - bold.getStringWidth(title) / 1000 * 16f) / 2)
+            y -= 34f
+            paragraph(
+                "This Service Agreement is made on 1 October 2026 between Example Provider Ltd., Istanbul (the \"Provider\") " +
+                    "and Sample Company Inc., Ankara (the \"Client\").",
+            )
+            listOf(
+                "1. Services" to "The Provider will set up, operate and support the document management system described in " +
+                    "Annex A, including updates, backups and help desk support on business days.",
+                "2. Term" to "This agreement starts on 1 November 2026 and runs for twelve months. It renews for another " +
+                    "twelve months unless either party gives written notice at least thirty days before the end of the term.",
+                "3. Fees and payment" to "The Client will pay a monthly fee of 12,500 TRY plus VAT. The Provider invoices at " +
+                    "the start of each month and invoices are due within fifteen days.",
+                "4. Confidentiality" to "Each party keeps the other party's confidential information secret and uses it only " +
+                    "to perform this agreement. This obligation continues for three years after the agreement ends.",
+                "5. Governing law" to "This agreement is governed by the laws of the Republic of Turkey. The courts of " +
+                    "Istanbul have jurisdiction over any dispute.",
+            ).forEach { (heading, body) ->
+                y -= 10f
+                text(heading, bold, 11f)
+                y -= 16f
+                paragraph(body)
+            }
+            // Signature block: one column per party, the line at the bottom of the empty signature space.
+            y = 842f - SIGNATURE_LINE_FROM_TOP
+            listOf(left to "For the Provider", left + width / 2 + 10f to "For the Client").forEachIndexed { i, (x, label) ->
+                val saved = y
+                y = 842f - SIGNATURE_SPOT.y + 18f
+                text(label, bold, 10.5f, x)
+                y = saved
+                content.moveTo(x, y)
+                content.lineTo(x + width / 2 - 10f, y)
+                content.stroke()
+                y -= 14f
+                text(if (i == 0) "Name: John Smith" else "Name: Jane Doe", regular, 10f, x)
+                y -= 13f
+                text("Date:", regular, 10f, x)
+                y = saved
+            }
         }
         doc.save(file)
     }
@@ -82,8 +135,9 @@ class ScreenshotTest {
         }
 
     @OptIn(ExperimentalComposeUiApi::class)
-    private fun shot(name: String, state: AppState, dark: Boolean = false, width: Int = 1040) {
-        val scene = ImageComposeScene(width = width * 2, height = 720 * 2, density = Density(2f)) {
+    // A 14-inch MacBook Pro window by default: 1512 x 982 points at 2x (Retina), so 3024 x 1964 pixels.
+    private fun shot(name: String, state: AppState, dark: Boolean = false, width: Int = 1512, height: Int = 982) {
+        val scene = ImageComposeScene(width = width * 2, height = height * 2, density = Density(2f)) {
             AppTheme(dark = dark) { App(state, pickFiles = {}) }
         }
         // A few frames with real time in between: the PDF preview loads and renders on background threads.
@@ -126,7 +180,7 @@ class ScreenshotTest {
                 ready()
                 files.addAll(sampleFiles())
                 settings.updateStamp(StampStyle.ICON_TEXT)
-                placeStamp(files.first(), StampPosition(1, 300f, 120f))
+                placeStamp(files.first(), SIGNATURE_SPOT)
             })
             // The smallest window: the preview goes under the list.
             shot("$l-11c-workspace-narrow", state(lang) {
@@ -276,3 +330,7 @@ class ScreenshotTest {
         }, dark = true)
     }
 }
+
+/** Top-left corner of the space above the client's signature line in the sample contract, in PDF points from the top. */
+private val SIGNATURE_SPOT = StampPosition(1, 309.5f, 470f)
+private const val SIGNATURE_LINE_FROM_TOP = 520f
