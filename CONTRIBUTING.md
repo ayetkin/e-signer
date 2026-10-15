@@ -38,8 +38,8 @@ Küçük bir düzeltmeden büyük işler için önce bir kayıt açın; yaklaş�
 3. Commit'leyip push'layın, CI'ın geçmesini bekleyin.
 4. Etiketi oluşturup push'layın: `git tag v0.4.2 && git push origin v0.4.2`.
 
-`Release` workflow'u testleri çalıştırır; macOS, Windows ve Linux paketlerini üretir; notları değişiklik
-günlüklerinden alarak (`tools/release-notes.sh`) GitHub release'ini yayımlar. Etiket `appVersion` ile
+`Release` workflow'u testleri çalıştırır; macOS, Windows ve Linux paketlerini üretir; İngilizce notları
+`CHANGELOG.en.md`'den alarak (`tools/release-notes.sh`) GitHub release'ini yayımlar. Etiket `appVersion` ile
 eşleşmezse ya da değişiklik günlüğünde o sürümün bölümü yoksa workflow durur. Yayımlamadan yalnızca
 paketleri denemek için Actions sekmesinden workflow'u elle çalıştırın; paketler çalışmanın
 artifact'ları olarak iner.

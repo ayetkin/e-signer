@@ -34,6 +34,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 - The macOS app menu shows "About E-Signer" instead of "About MainKt".
 - Button labels are centered vertically.
+- On macOS, Window > Minimize (Cmd+M) froze the app.
+- On macOS, the menu bar could show only the app menu right after the start.
 
 ## [0.4.1] - 2026-10-15
 

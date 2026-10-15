@@ -24,7 +24,9 @@ import sh.yetkin.esigner.app.ui.openLink
 import java.awt.Desktop
 import java.awt.Dimension
 import java.awt.FileDialog
+import java.awt.Frame
 import java.awt.Taskbar
+import kotlin.concurrent.thread
 
 private val isMac = System.getProperty("os.name").startsWith("Mac")
 
@@ -84,6 +86,14 @@ private fun runApp() = application {
         icon = AppIconPainter(),
         state = windowState,
     ) {
+        if (isMac) LaunchedEffect(Unit) {
+            // The window is key before its first composition adds the menus, and the screen menu bar then shows only
+            // the app menu until the user points at it. Setting the menu bar again installs it with all its menus.
+            window.jMenuBar?.let {
+                window.jMenuBar = null
+                window.jMenuBar = it
+            }
+        }
         // Whether the card screen was shown on the effect's previous run; the app starts on it.
         val wasOnCardScreen = remember { booleanArrayOf(true) }
         // Switching screens resizes the window; a changed window setting applies at once, not only on the next start.
@@ -144,7 +154,10 @@ private fun runApp() = application {
                 }
                 Menu(state.strings["menu.window"]) {
                     Item(state.strings["menu.minimize"], shortcut = KeyShortcut(Key.M, meta = true)) {
-                        windowState.isMinimized = true
+                        // Not on the event thread: there AWT waits for the minimize to finish while AppKit waits for
+                        // the event thread to take the window's move events, and the app hangs. Compose follows the
+                        // window state on its own.
+                        thread { window.extendedState = window.extendedState or Frame.ICONIFIED }
                     }
                     Item(state.strings["menu.zoom"], enabled = !onCardScreen) {
                         windowState.placement =

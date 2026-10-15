@@ -38,7 +38,7 @@ For anything larger than a small fix, open an issue first so we can agree on the
 4. Create and push the tag: `git tag v0.4.2 && git push origin v0.4.2`.
 
 The `Release` workflow runs the tests, builds the macOS, Windows and Linux packages and publishes the
-GitHub release with the notes taken from the changelogs (`tools/release-notes.sh`). It stops if the tag
+GitHub release with the English notes taken from `CHANGELOG.en.md` (`tools/release-notes.sh`). It stops if the tag
 does not match `appVersion` or a changelog has no section for that version. To only try the packages
 without publishing, run the workflow by hand from the Actions tab; the packages are attached to the run
 as artifacts.

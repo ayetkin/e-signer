@@ -1,7 +1,7 @@
 name: Release
 
 # A version tag (v0.4.2) builds the packages for every platform and publishes them on a GitHub release,
-# with the notes taken from CHANGELOG.md and CHANGELOG.en.md. Run it by hand to only build them; the
+# with the notes (English) taken from CHANGELOG.en.md. Run it by hand to only build them; the
 # packages are then attached to the run as artifacts.
 on:
   push:

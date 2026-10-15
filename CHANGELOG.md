@@ -33,6 +33,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 - macOS uygulama menüsünde "About MainKt" yerine "E-Signer Hakkında" görünür.
 - Düğme yazıları dikeyde ortalanır.
+- macOS'ta Pencere > Küçült (Cmd+M) uygulamayı kilitliyordu.
+- macOS'ta ilk açılışta menü çubuğunda yalnızca uygulama menüsü görünebiliyordu.
 
 ## [0.4.1] - 2026-10-15
 
