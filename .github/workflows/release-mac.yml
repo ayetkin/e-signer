@@ -1,0 +1,80 @@
+name: macOS release
+
+# A version tag (v0.4.1) builds the disk images and publishes them on a GitHub release.
+# Run it by hand to only build them; the images are then attached to the run as artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version'
+        default: '0.4.1'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            compose: macos-arm64
+          - runner: macos-15-intel
+            arch: x64
+            compose: macos-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: ./gradlew --no-daemon -PcomposeTarget=${{ matrix.compose }} :core:test :app:installDist
+
+      # A trimmed Java runtime goes inside the app, so users need no Java of their own.
+      - name: Java runtime
+        run: |
+          mkdir -p build/package
+          cp -R app/build/install/app/lib build/package/lib
+          jlink --module-path "$JAVA_HOME/jmods" --add-modules ALL-MODULE-PATH \
+            --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
+            --output build/package/runtime
+
+      - name: Disk image
+        run: |
+          DIST=build/package JPACKAGE="$JAVA_HOME/bin/jpackage" TYPE=dmg OUT=build/dmg tools/package-mac.sh
+          mv "build/dmg/E-Signer-$VERSION.dmg" "build/dmg/E-Signer-$VERSION-macos-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: E-Signer-macos-${{ matrix.arch }}
+          path: build/dmg/*.dmg
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dmg
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dmg/*.dmg --repo "$GITHUB_REPOSITORY" \
+            --title "E-Signer ${GITHUB_REF_NAME#v}" --generate-notes \
+            --notes "Installation: https://github.com/${GITHUB_REPOSITORY}/blob/main/INSTALL.md"

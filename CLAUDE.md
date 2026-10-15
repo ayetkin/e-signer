@@ -188,6 +188,12 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   jlink'teki JDK ile hedef JDK sürümü birebir aynı olmalı (imaj sürümü sabitlenmeli).
 - `container build ... --output type=local,dest=dist .` çıktıyı `dist/linux_arm64/` altına koyar.
 - Dağıtım paketleri (`.dmg`, `.msi`) her platformda kendi üzerinde `jpackage` ile üretilmeli → GitHub Actions matrisi.
+  macOS: `.github/workflows/release-mac.yml` (`v*` etiketi ya da elle): `macos-15` (arm64) ve `macos-15-intel` (x64)
+  üzerinde test + `installDist` + `jlink` + `tools/package-mac.sh` (`TYPE=dmg`), etiketle GitHub release'e yükler.
+  dmg'yi jpackage değil `hdiutil` üretir (jpackage'ın Applications kısayolu Finder betiğiyle yapılıyor, CI'da sessizce
+  oluşmuyor). Uygulama ad-hoc imzalı, Developer ID/notarization yok: kullanıcı ilk açılışta "Yine de Aç" der
+  (`INSTALL.md`). jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik
+  jpackage'a 1.0.0 verip `Info.plist`'e gerçek sürümü (ör. 0.4.1) yazar ve ad-hoc yeniden imzalar.
 
 ## Yol haritası
 

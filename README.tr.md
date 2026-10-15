@@ -25,11 +25,16 @@ dosyaları doğrulayan masaüstü uygulaması. macOS (Apple silicon ve Intel), W
 | --- | --- |
 | ![Onay](docs/screenshots/confirm.png) | ![Doğrulama](docs/screenshots/verify.png) |
 
+## İndirme
+
+Apple silicon ve Intel Mac'ler için disk görüntüleri [sürümler sayfasında](https://github.com/ayetkin/e-signer/releases).
+Gerekenler (kart sürücüsü, okuyucu) ve uygulamanın ilk açılışı için [INSTALL.tr.md](INSTALL.tr.md) dosyasına bakın.
+
 ## Durum
 
 Geliştirme sürüyor. İmzalama ve kart algılama macOS'ta gerçek AKİS kartlarla denendi; Windows ve
-gerçek zaman damgası sunucularıyla kullanım daha geniş test gerektiriyor. İmzalı sürümler henüz
-yayımlanmadı, şimdilik uygulama kaynak koddan derlenir.
+gerçek zaman damgası sunucularıyla kullanım daha geniş test gerektiriyor. Windows ve Linux paketleri
+henüz yayımlanmıyor; bu sistemlerde uygulama kaynak koddan derlenir.
 
 > **Sorumluluk reddi.** E-Signer sertifikalı bir ürün değildir. İmzayı nitelikli yapan bu yazılım
 > değil, kartınızdaki nitelikli sertifika ve anahtardır. Önemli işlerde kullanmadan önce imzalı

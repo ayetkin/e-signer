@@ -25,11 +25,16 @@ and for verifying signed files. It runs on macOS (Apple silicon and Intel), Wind
 | --- | --- |
 | ![Confirmation](docs/screenshots/confirm.png) | ![Verification](docs/screenshots/verify.png) |
 
+## Download
+
+macOS disk images for Apple silicon and Intel are on the [releases page](https://github.com/ayetkin/e-signer/releases).
+See [INSTALL.md](INSTALL.md) for what you need (card driver, reader) and how to open the app the first time.
+
 ## Status
 
 Under active development. Signing and card detection are tested with real AKİS cards on macOS;
-Windows and time-stamping against production authorities still need wider testing. Signed releases
-are not published yet, so for now the app is built from source.
+Windows and time-stamping against production authorities still need wider testing. Windows and
+Linux packages are not published yet; there the app is built from source.
 
 > **Disclaimer.** E-Signer is not a certified product. A signature is qualified because of the
 > qualified certificate and the key on your card, not because of this software. Check the signed
