@@ -32,7 +32,9 @@ jobs:
           - { os: macos, runner: macos-15-intel, arch: x64, compose: macos-x64 }
           # WiX 3 (needed by jpackage for the .msi) is preinstalled on windows-2022, not on windows-2025.
           - { os: windows, runner: windows-2022, arch: x64, compose: windows-x64 }
-          - { os: linux, runner: ubuntu-24.04, arch: x64, compose: linux-x64 }
+          # jpackage takes the .deb dependencies from the build machine; 24.04 would require libasound2t64,
+          # which Debian 12 and Ubuntu 22.04 lack.
+          - { os: linux, runner: ubuntu-22.04, arch: x64, compose: linux-x64 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     defaults:
