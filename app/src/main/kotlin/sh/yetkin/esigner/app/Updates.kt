@@ -16,7 +16,7 @@ sealed interface UpdateCheck {
     data object Failed : UpdateCheck
 }
 
-/** App version and the latest GitHub release; only asked when the user checks, never in the background. */
+/** App version and the latest GitHub release; asked once at startup and when the user checks. */
 object Updates {
     const val REPOSITORY_URL = "https://github.com/ayetkin/e-signer"
     const val RELEASES_URL = "$REPOSITORY_URL/releases/latest"

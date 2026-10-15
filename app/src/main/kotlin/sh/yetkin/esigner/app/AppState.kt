@@ -357,11 +357,13 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         aboutOpen = false
     }
 
-    fun checkForUpdates() {
+    /** [quiet]: the check the user did not ask for (at startup); its failure is not shown. */
+    fun checkForUpdates(quiet: Boolean = false) {
         if (updateCheck == UpdateCheck.Checking) return
         updateCheck = UpdateCheck.Checking
         scope.launch {
-            updateCheck = withContext(Dispatchers.IO) { runCatching { Updates.check() }.getOrDefault(UpdateCheck.Failed) }
+            val result = withContext(Dispatchers.IO) { runCatching { Updates.check() }.getOrDefault(UpdateCheck.Failed) }
+            updateCheck = if (quiet && result == UpdateCheck.Failed) UpdateCheck.Idle else result
         }
     }
 

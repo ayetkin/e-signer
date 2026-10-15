@@ -379,6 +379,13 @@ class ScreenshotTest {
                 )
             })
         }
+        shot("en-11e-workspace-update", state(Language.EN) {
+            scan = ScanState.Ready(CardScan(1, listOf(card)))
+            selectedSlot = 1
+            screen = Screen.WORKSPACE
+            files.addAll(sampleFiles())
+            updateCheck = UpdateCheck.Available("9.9.9")
+        })
         shot("dark-11-workspace-files", state(Language.EN) {
             scan = ScanState.Ready(CardScan(1, listOf(card)))
             selectedSlot = 1

@@ -18,6 +18,9 @@ enum class TsaAuthType { KAMU_SM, BASIC }
 /** How the main window opens. */
 enum class WindowMode { MAXIMIZED, LAST, DEFAULT }
 
+/** Light or dark colors; [SYSTEM] follows the operating system. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 /** What is drawn on signed PDFs; [NONE] keeps the signature invisible. */
 enum class StampStyle(val text: Boolean, val icon: Boolean) {
     NONE(false, false), TEXT(true, false), ICON(false, true), ICON_TEXT(true, true)
@@ -57,6 +60,11 @@ class SigningSettings(private val persist: Boolean = true) {
         private set
     var windowMode by mutableStateOf(WindowMode.MAXIMIZED)
         private set
+    var themeMode by mutableStateOf(ThemeMode.SYSTEM)
+        private set
+    /** Asks GitHub for a new version once at startup; off keeps the app from going online unasked. */
+    var checkUpdatesAtStart by mutableStateOf(true)
+        private set
     /** Window size when it was last closed un-maximized; used by [WindowMode.LAST]. */
     var lastWindowSize by mutableStateOf(DEFAULT_WINDOW_SIZE)
         private set
@@ -77,6 +85,8 @@ class SigningSettings(private val persist: Boolean = true) {
             reason = prefs.get(REASON, null)
             location = prefs.get(LOCATION, "")
             windowMode = WindowMode.entries.firstOrNull { it.name == prefs.get(WINDOW_MODE, null) } ?: windowMode
+            checkUpdatesAtStart = prefs.getBoolean(UPDATES_AT_START, true)
+            themeMode = ThemeMode.entries.firstOrNull { it.name == prefs.get(THEME, null) } ?: themeMode
             lastWindowSize = DpSize(prefs.getInt(WINDOW_WIDTH, 1120).dp, prefs.getInt(WINDOW_HEIGHT, 760).dp)
         }
     }
@@ -109,6 +119,16 @@ class SigningSettings(private val persist: Boolean = true) {
     fun updateWindowMode(value: WindowMode) {
         windowMode = value
         if (persist) runCatching { prefs.put(WINDOW_MODE, value.name) }
+    }
+
+    fun updateThemeMode(value: ThemeMode) {
+        themeMode = value
+        if (persist) runCatching { prefs.put(THEME, value.name) }
+    }
+
+    fun updateCheckUpdatesAtStart(value: Boolean) {
+        checkUpdatesAtStart = value
+        if (persist) runCatching { prefs.putBoolean(UPDATES_AT_START, value) }
     }
 
     fun rememberWindowSize(size: DpSize) {
@@ -208,6 +228,8 @@ class SigningSettings(private val persist: Boolean = true) {
         private const val LOCATION = "pdfLocation"
         private const val LIBRARY = "pkcs11Library"
         private const val WINDOW_MODE = "windowMode"
+        private const val THEME = "theme"
+        private const val UPDATES_AT_START = "checkUpdatesAtStart"
         private const val WINDOW_WIDTH = "windowWidth"
         private const val WINDOW_HEIGHT = "windowHeight"
         private val prefs: Preferences get() = Preferences.userRoot().node("sh/yetkin/esigner")

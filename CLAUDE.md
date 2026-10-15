@@ -61,19 +61,19 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
     TSA parolası yalnızca bellekte (uygulama kapanınca istenir), her imza turuna kopyası verilir ve tur bitince
     sıfırlanır. Zaman damgalı seviyede TSA eksikse "İmzala" kapalı. PKCS#11 kütüphane yolu ve açılış pencere
     modu (`WindowMode`: ekranı kapla / son boyut / standart) da burada, prefs'te.
-  - Ayar penceresi `ui/SettingsDialog.kt`: bölümlü (`SettingsSection`: Genel = dil + pencere, İmza = seviye +
+  - Ayar penceresi `ui/SettingsDialog.kt`: bölümlü (`SettingsSection`: Genel = dil + görünüm (`ThemeMode`: sistem / açık / koyu) + pencere, İmza = seviye +
     görünür imza, Zaman damgası, Kart = kütüphane yolu + takılı kartların PIN'siz okunan ayrıntıları). Taslak
     üzerinde çalışır, "Kaydet" ile uygulanır. Kenar çubuğundaki "Ayarlar", kart ekranındaki dişli ve macOS
     Preferences menüsü açar.
   - Pencere: kart ekranı ortada küçük pencere (`SigningSettings.CARD_WINDOW_SIZE`), çalışma alanı `WindowMode`'a göre.
     macOS menüleri: Dosya, Görünüm, Pencere, Yardım (Hakkında, güncelleme denetimi, GitHub). `ui/AboutDialog.kt`:
-    sürüm, geliştirici, lisans; `Updates` yalnızca kullanıcı isteyince GitHub `releases/latest`'e sorar.
+    sürüm, geliştirici, lisans; `Updates` açılışta bir kez (Ayarlar > Genel'den kapatılabilir, `checkUpdatesAtStart`; "dev" sürümde ve sessiz denetimin hatası gösterilmez) ve kullanıcı isteyince GitHub `releases/latest`'e sorar; yeni sürüm varsa kenar çubuğunda "Güncelleme" satırı çıkar.
     Sürümün tek kaynağı `gradle.properties` `appVersion` (jar'a `version.properties` olarak gömülür; release
     workflow etiketten `-PappVersion` verir, `package-mac.sh` varsayılanı buradan okur).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
     `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
 - Arayüz düzeni: çalışma alanı ve sonuç ekranı `AppShell` (`ui/Sidebar.kt`) içinde. Sol panelde sekmeler,
-  kart (Değiştir), imza ayarları (biçim, görünür imza, seviye) ve "Ayarlar"; sağda içerik ve yalnızca "İmzala" düğmeli alt çubuk.
+  kart (Değiştir), imza ayarları (biçim, görünür imza, seviye) ve "Ayarlar"; kart bölümünün üstünde kaydırılmayan "İmzala" düğmesi; sağda içerik (alt çubuk yok).
 - Simge: `ui/AppIcon.kt` kodla çizilir (uygulama içi logo + pencere simgesi). `IconTest` 1024 px PNG üretir
   (`app/build/icon/`), sonuçlar `app/packaging/` altına kopyalanır; `icon.icns` macOS'ta `sips` + `iconutil`
   ile üretildi. Windows `icon.ico` (16-256 px PNG'li) icon.png'den üretildi.

@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,7 +121,6 @@ fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> 
                 }
             }
         }
-        if (!verify) BottomBar(state)
     }
 }
 
@@ -296,42 +294,6 @@ fun ExtensionBadge(extension: String, small: Boolean = false) {
 @Composable
 fun FormatChip(format: SignatureFormat) {
     Chip(str(if (format == SignatureFormat.PADES) "format.chip.pades" else "format.chip.cades"))
-}
-
-@Composable
-private fun BottomBar(state: AppState) {
-    Column {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(
-            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            val missing = state.settings.missingTsa
-            Text(
-                if (missing) str("level.tsaMissing") else str("sign.dialog.level", levelSummary(state.settings)),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (missing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val count = state.files.size
-            Button(
-                onClick = state::requestSign,
-                enabled = state.canSign,
-                modifier = Modifier.height(40.dp),
-            ) {
-                Icon(AppIcons.DrawFilled, contentDescription = null, modifier = Modifier.padding(start = 4.dp).size(18.dp))
-                Text(
-                    if (count == 0) str("sign.button") else str("sign.buttonCount", count),
-                    // Merged so the button's label nudge (see Buttons.kt) still applies.
-                    style = LocalTextStyle.current.merge(MaterialTheme.typography.titleSmall),
-                    modifier = Modifier.padding(start = 8.dp, end = 12.dp),
-                )
-            }
-        }
-    }
 }
 
 /** Null when the PDF gets no visible signature: invisible style, or signed as a separate .imz. */

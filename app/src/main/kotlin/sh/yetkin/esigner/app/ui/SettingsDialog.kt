@@ -28,6 +28,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +69,7 @@ import sh.yetkin.esigner.app.SigningSettings
 import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.core.VisibleStamp
 import kotlin.math.roundToInt
+import sh.yetkin.esigner.app.ThemeMode
 import sh.yetkin.esigner.app.TsaAuthType
 import sh.yetkin.esigner.app.Updates
 import sh.yetkin.esigner.app.WindowMode
@@ -86,6 +89,8 @@ fun SettingsDialog(state: AppState) {
     val settings = state.settings
     var language by remember { mutableStateOf(state.language) }
     var windowMode by remember { mutableStateOf(settings.windowMode) }
+    var themeMode by remember { mutableStateOf(settings.themeMode) }
+    var updatesAtStart by remember { mutableStateOf(settings.checkUpdatesAtStart) }
     var level by remember { mutableStateOf(settings.level) }
     var stamp by remember { mutableStateOf(settings.stamp) }
     var stampHeight by remember { mutableStateOf(settings.stampHeight) }
@@ -116,6 +121,8 @@ fun SettingsDialog(state: AppState) {
         // Compared with the default before a language change below, the default stays the default.
         settings.updatePdfDetails(reason, location, state.defaultReason)
         settings.updateWindowMode(windowMode)
+        settings.updateThemeMode(themeMode)
+        settings.updateCheckUpdatesAtStart(updatesAtStart)
         if (language != state.language) state.switchLanguage(language)
         if (library.trim() != settings.libraryPath) {
             settings.updateLibraryPath(library)
@@ -215,8 +222,23 @@ fun SettingsDialog(state: AppState) {
                                     Group(str("settings.language")) {
                                         Segmented(Language.entries.map { it to str("language.${it.name}") }, language) { language = it }
                                     }
+                                    Group(str("settings.theme")) {
+                                        Segmented(ThemeMode.entries.map { it to str("settings.theme.${it.name}") }, themeMode) { themeMode = it }
+                                    }
                                     Group(str("settings.window")) {
                                         OptionList(WindowMode.entries, windowMode, { "settings.window.${it.name}" }) { windowMode = it }
+                                    }
+                                    Group(str("settings.updates")) {
+                                        Row(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .handCursor()
+                                                .toggleable(value = updatesAtStart, role = Role.Checkbox, onValueChange = { updatesAtStart = it }),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Checkbox(checked = updatesAtStart, onCheckedChange = null)
+                                            Text(str("settings.updates.atStart"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp))
+                                        }
                                     }
                                     // The AGPL asks interactive programs to show the license and the absence of warranty.
                                     Group(str("settings.about")) {

@@ -26,6 +26,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -48,6 +49,8 @@ import sh.yetkin.esigner.app.SettingsSection
 import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.app.Tab
+import sh.yetkin.esigner.app.UpdateCheck
+import sh.yetkin.esigner.app.Updates
 import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.FormatMode
@@ -113,11 +116,41 @@ private fun Sidebar(state: AppState) {
                 TimestampRow(state)
             }
         }
+        // Outside the scrolling list, so the main action stays visible in short windows.
+        if (state.tab == Tab.SIGN) SignButton(state)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            (state.updateCheck as? UpdateCheck.Available)?.let {
+                SidebarRow(
+                    icon = AppIcons.Download,
+                    label = str("sidebar.update"),
+                    value = str("about.update.available", it.version),
+                    enabled = true,
+                    onClick = { openLink(Updates.RELEASES_URL) },
+                )
+            }
             Caption(str("sidebar.card"), top = 8.dp)
             CardRow(state)
         }
+    }
+}
+
+/** Under the signature options; the files are counted in its label. */
+@Composable
+private fun SignButton(state: AppState) {
+    val count = state.files.size
+    Button(
+        onClick = state::requestSign,
+        enabled = state.canSign,
+        modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 14.dp).fillMaxWidth().height(40.dp),
+    ) {
+        Icon(AppIcons.DrawFilled, contentDescription = null, modifier = Modifier.size(18.dp))
+        Text(
+            if (count == 0) str("sign.button") else str("sign.buttonCount", count),
+            // Merged so the button's label nudge (see Buttons.kt) still applies.
+            style = LocalTextStyle.current.merge(MaterialTheme.typography.titleSmall),
+            modifier = Modifier.padding(start = 8.dp),
+        )
     }
 }
 

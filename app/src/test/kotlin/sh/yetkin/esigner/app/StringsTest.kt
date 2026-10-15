@@ -51,6 +51,7 @@ class StringsTest {
             assertTrue("settings.window.${it.name}" in keys, it.name)
             assertTrue("settings.window.${it.name}.hint" in keys, it.name)
         }
+        ThemeMode.entries.forEach { assertTrue("settings.theme.${it.name}" in keys, it.name) }
         Language.entries.forEach { assertTrue("language.${it.name}" in keys, it.name) }
         StampStyle.entries.forEach {
             assertTrue("stamp.${it.name}" in keys, it.name)

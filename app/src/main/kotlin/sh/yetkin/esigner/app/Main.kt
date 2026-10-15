@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.MenuBar
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.Window
@@ -58,6 +59,8 @@ private fun runApp() = application {
         state.dispose()
     }
     LaunchedEffect(Unit) {
+        // Builds without a version (IDE runs) would always see an update.
+        if (state.settings.checkUpdatesAtStart && Updates.current != "dev") state.checkForUpdates(quiet = true)
         // The Compose window icon does not reach the Dock on macOS; the .app bundle has its .icns, run.sh does not.
         // Optional macOS integration: an unsupported feature must not keep card detection from starting.
         if (isMac) runCatching {
@@ -172,7 +175,23 @@ private fun runApp() = application {
                 }
             }
         }
-        AppTheme(titleBarInset = if (isMac) MAC_TITLE_BAR_HEIGHT else 0.dp) {
+        val dark = when (state.settings.themeMode) {
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+        // The macOS title bar follows a chosen theme; with none it follows the system by itself.
+        LaunchedEffect(state.settings.themeMode) {
+            window.rootPane.putClientProperty(
+                "apple.awt.windowAppearance",
+                when (state.settings.themeMode) {
+                    ThemeMode.SYSTEM -> null
+                    ThemeMode.LIGHT -> "NSAppearanceNameAqua"
+                    ThemeMode.DARK -> "NSAppearanceNameDarkAqua"
+                },
+            )
+        }
+        AppTheme(dark = dark, titleBarInset = if (isMac) MAC_TITLE_BAR_HEIGHT else 0.dp) {
             App(
                 state = state,
                 pickFiles = pickFiles,

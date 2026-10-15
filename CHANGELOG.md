@@ -8,6 +8,17 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.5.2] - 2026-10-15
+
+### Eklenenler
+
+- Ayarlar > Genel'de görünüm seçimi: sistem, açık ya da koyu.
+
+### Değişenler
+
+- Güncellemeler açılışta da denetlenir (Ayarlar > Genel'den kapatılabilir); yeni sürüm varsa kenar çubuğunda indirme bağlantısı çıkar.
+- Alttaki çubuk kaldırıldı; "İmzala" düğmesi kenar çubuğunun altında, kartın üstünde sabit.
+
 ## [0.5.1] - 2026-10-15
 
 ### Eklenenler
@@ -86,7 +97,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

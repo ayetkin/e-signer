@@ -8,6 +8,17 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-15
+
+### Added
+
+- An appearance choice in Settings > General: system, light or dark.
+
+### Changed
+
+- Updates are also checked at startup (can be turned off in Settings > General); a new version shows a download link in the sidebar.
+- The bar at the bottom is gone; the "Sign" button stays at the bottom of the sidebar, above the card.
+
 ## [0.5.1] - 2026-10-15
 
 ### Added
@@ -87,7 +98,8 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1
