@@ -4,15 +4,19 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField
+import org.apache.pdfbox.rendering.PDFRenderer
 import org.bouncycastle.cms.CMSSignedData
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
+import javax.imageio.ImageIO
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DocumentSignerTest {
@@ -56,6 +60,53 @@ class DocumentSignerTest {
             assertTrue(rect.width <= 1f && rect.height <= 1f, "widget must stay invisible: $rect")
             assertTrue(field.signature != null)
         }
+    }
+
+    @Test
+    fun `visible stamp goes bottom-right of the last page and the next one does not overlap it`() {
+        val input = File(dir, "two-pages.pdf").also { file ->
+            PDDocument().use { it.addPage(PDPage()); it.addPage(PDPage()); it.save(file) }
+        }
+        val icon = ByteArrayOutputStream().also {
+            ImageIO.write(java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", it)
+        }.toByteArray()
+        val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", icon))
+        val first = stamped.sign(input, SignatureFormat.PADES, token, key)
+        val second = stamped.sign(first, SignatureFormat.PADES, token, key, File(dir, "twice.pdf"))
+        PDDocument.load(second).use { doc ->
+            assertTrue(doc.getPage(0).annotations.isEmpty())
+            val rects = doc.getPage(1).annotations.map { it.rectangle }
+            assertEquals(2, rects.size)
+            val (a, b) = rects
+            assertEquals(VisibleStamp.DEFAULT_HEIGHT, a.height, 0.5f)
+            assertTrue(a.width > 80f, "stamp too narrow: $a")
+            assertTrue(a.upperRightX > doc.getPage(1).cropBox.width / 2 && a.upperRightY < 100f, "not bottom-right: $a")
+            assertTrue(a.upperRightX <= b.lowerLeftX || b.upperRightX <= a.lowerLeftX, "stamps overlap: $a $b")
+            // For a visual check of the layout.
+            File("build/stamp").mkdirs()
+            ImageIO.write(PDFRenderer(doc).renderImageWithDPI(1, 220f).getSubimage(900, 2100, 970, 270), "png", File("build/stamp/stamp.png"))
+        }
+    }
+
+    @Test
+    fun `visible stamp goes where the user chose, never over another signature`() {
+        val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", null))
+        val chosen = StampPosition(page = 1, x = 100f, y = 200f)
+        val signed = stamped.sign(pdf(), SignatureFormat.PADES, token, key, stampAt = chosen)
+        PDDocument.load(signed).use { doc ->
+            val page = doc.getPage(0)
+            val rect = page.annotations.single().rectangle
+            assertEquals(100f, rect.lowerLeftX, 0.5f)
+            assertEquals(page.cropBox.height - 200f, rect.upperRightY, 0.5f)
+            val (width, height) = VisibleStamp("Electronically signed", null).size("Test User")
+            assertTrue(!stampFits(doc, chosen.copy(x = 110f), width, height))
+            assertTrue(stampFits(doc, chosen.copy(y = 300f), width, height))
+        }
+        val e = assertFailsWith<SigningException> {
+            stamped.sign(signed, SignatureFormat.PADES, token, key, File(dir, "again.pdf"), chosen.copy(x = 110f))
+        }
+        assertEquals(SigningError.STAMP_POSITION_INVALID, e.error)
+        assertFalse(File(dir, "again.pdf").exists())
     }
 
     @Test

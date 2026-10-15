@@ -38,7 +38,8 @@ val pkcs11Exports: List<String> by rootProject.extra
 
 application {
     mainClass.set("sh.yetkin.esigner.app.MainKt")
-    applicationDefaultJvmArgs = pkcs11Exports
+    // Trackpad pinch (MacGestures.kt); only a warning on other platforms.
+    applicationDefaultJvmArgs = pkcs11Exports + listOf("--add-exports", "java.desktop/com.apple.eawt.event=ALL-UNNAMED")
 }
 
 tasks.test {

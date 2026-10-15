@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # Headless screenshot rendering (ScreenshotTest) needs OpenGL and fonts.
+      - name: Install rendering libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends fontconfig fonts-inter fonts-dejavu-core libgl1 libglx-mesa0
+      - name: Test
+        run: ./gradlew --no-daemon :core:test :app:test
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: app/build/screenshots
+          if-no-files-found: ignore

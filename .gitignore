@@ -7,3 +7,6 @@ vendor/
 .idea/
 *.iml
 .DS_Store
+graphify-out/
+.claude/
+CLAUDE.local.md

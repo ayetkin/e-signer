@@ -100,22 +100,26 @@ class HttpTimestampSource(
         }
         when (response.statusCode()) {
             200 -> Unit
-            401, 403 -> throw SigningException(SigningError.TIMESTAMP_REJECTED, "HTTP ${response.statusCode()}")
-            else -> throw SigningException(SigningError.TIMESTAMP_FAILED, "HTTP ${response.statusCode()}")
+            401, 403 -> throw SigningException(SigningError.TIMESTAMP_REJECTED, "HTTP ${response.statusCode()}", TsaResponseError(response))
+            else -> throw SigningException(SigningError.TIMESTAMP_FAILED, "HTTP ${response.statusCode()}", TsaResponseError(response))
         }
 
         val timestamp = try {
             TimeStampResponse(response.body())
         } catch (e: Exception) {
-            throw SigningException(SigningError.TIMESTAMP_FAILED, cause = e)
+            throw SigningException(SigningError.TIMESTAMP_FAILED, cause = TsaResponseError(response, e))
         }
         val token = timestamp.timeStampToken
             // Kamu SM answers a wrong password or an empty balance with a rejection status.
-            ?: throw SigningException(SigningError.TIMESTAMP_REJECTED, timestamp.statusString ?: "status ${timestamp.status}")
+            ?: throw SigningException(
+                SigningError.TIMESTAMP_REJECTED,
+                timestamp.statusString ?: "status ${timestamp.status}",
+                TsaResponseError(response, note = "PKIStatus ${timestamp.status}, failInfo ${timestamp.failInfo?.intValue() ?: "-"}"),
+            )
         try {
             timestamp.validate(request)
         } catch (e: Exception) {
-            throw SigningException(SigningError.TIMESTAMP_FAILED, cause = e)
+            throw SigningException(SigningError.TIMESTAMP_FAILED, cause = TsaResponseError(response, e))
         }
         return TimestampBinary(token.encoded)
     }
@@ -175,6 +179,32 @@ object KamuSmIdentity {
             SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
         } finally {
             spec.clearPassword()
+        }
+    }
+}
+
+/**
+ * What the TSA actually answered, for the error details view: request line, status, content type and
+ * the start of the body (text as is, binary as hex). The request carries no secrets, so nothing is masked.
+ */
+internal class TsaResponseError(response: HttpResponse<ByteArray>, cause: Throwable? = null, note: String? = null) :
+    Exception(describe(response, note), cause) {
+    private companion object {
+        fun describe(response: HttpResponse<ByteArray>, note: String?): String {
+            val type = response.headers().firstValue("Content-Type").orElse("-")
+            val body = response.body()
+            val isText = listOf("text", "json", "xml", "html").any { it in type.lowercase() }
+            val preview = if (isText) {
+                String(body, Charsets.UTF_8).take(2000)
+            } else {
+                body.take(64).joinToString(" ") { "%02x".format(it) } + if (body.size > 64) " ..." else ""
+            }
+            return listOfNotNull(
+                "${response.request().method()} ${response.uri()} -> HTTP ${response.statusCode()}",
+                "Content-Type: $type, ${body.size} bytes",
+                note,
+                preview.ifBlank { null },
+            ).joinToString("\n")
         }
     }
 }

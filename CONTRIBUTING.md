@@ -1,0 +1,31 @@
+# Contributing
+
+Thanks for your interest in E-Signer. Issues, ideas and pull requests are welcome.
+
+## Before you start
+
+For anything larger than a small fix, open an issue first so we can agree on the approach.
+
+## Development
+
+- JDK 21. Run `./gradlew :core:test` for the core tests and `./gradlew :app:test` for the UI tests,
+  which also render every screen to `app/build/screenshots`. Look at the screenshots after UI changes.
+- Tests must not need a card or the network: use `TestKeys` (software keys) and `LocalPki`
+  (a local time-stamp server and CRL) in `core/src/test`.
+- Code, comments, identifiers and test data are in English. All user-facing text lives in
+  `app/src/main/resources/i18n/strings_{en,tr}.properties`, in both languages; `StringsTest`
+  checks that the two files have the same keys. `core` returns error codes, never UI text.
+- Keep `core` independent of the UI.
+- Follow the rules in [SECURITY.md](SECURITY.md#design-rules): never retry a PIN, never log or store
+  PINs, passwords or personal data, and never put real personal data in tests, logs or commits.
+
+## Pull requests
+
+- One topic per pull request, with tests for new behavior.
+- Describe what changed and how you tested it, including the card and OS if you tested with a card.
+
+## License of contributions
+
+E-Signer is licensed under the AGPL-3.0. By submitting a contribution you agree that it is licensed
+under the AGPL-3.0, and you grant the maintainer the right to also license your contribution under
+other terms, including commercial licenses. Only submit work you have the right to contribute.

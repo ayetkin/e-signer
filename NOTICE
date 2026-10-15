@@ -1,0 +1,43 @@
+E-Signer
+Copyright (C) 2026 Ali Yetkin
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License as published by the Free Software Foundation, version 3.
+It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
+
+Third-party components
+----------------------
+
+E-Signer uses the following components. Each remains under its own license; the AGPL-3.0 does not
+change their terms.
+
+- EU Digital Signature Service (DSS) 6.1, European Commission - GNU LGPL 2.1
+  https://github.com/esig/dss
+  Used unmodified as separate libraries. It bundles the PT Serif font (ParaType, SIL Open Font
+  License 1.1), which E-Signer uses to draw the text of visible signatures.
+- Apache PDFBox 2.0 - Apache License 2.0
+- Bouncy Castle (bcprov, bcpkix) - MIT-style Bouncy Castle License
+- Kotlin standard library and kotlinx.coroutines, JetBrains - Apache License 2.0
+- Compose Multiplatform and Skiko, JetBrains and Google - Apache License 2.0
+- Material Design icons, Google - Apache License 2.0
+  A few icons are copied as path data in app/src/main/kotlin/sh/yetkin/esigner/app/ui/AppIcons.kt.
+- SLF4J - MIT License
+- Further transitive dependencies of DSS (Apache Commons, Jakarta XML Binding and others) under
+  their own open source licenses; `./gradlew :app:dependencies` lists them.
+
+Packaged builds include a Java runtime from Eclipse Temurin (OpenJDK 21), licensed under the
+GNU GPL v2 with the Classpath Exception.
+
+Bundled certificates
+--------------------
+
+core/src/main/resources/trust/ contains the public root certificates of Turkish qualified trust
+service providers. They are public data published by their issuers; anchors.properties records the
+source and SHA-256 digest of each.
+
+Protocol references
+-------------------
+
+The Kamu SM time-stamp "identity" header (core/.../Timestamping.kt) is an independent
+implementation of the request format, written with the open source project
+KilimcininKorOglu/kamusm-go as a protocol reference. No code was copied from it.

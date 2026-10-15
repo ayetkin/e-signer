@@ -3,12 +3,24 @@ package sh.yetkin.esigner.app
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import sh.yetkin.esigner.core.HttpTimestampSource
+import sh.yetkin.esigner.core.Pkcs11Library
 import sh.yetkin.esigner.core.SigningLevel
 import sh.yetkin.esigner.core.TimestampAuth
+import sh.yetkin.esigner.core.VisibleStamp
 import java.util.prefs.Preferences
 
 enum class TsaAuthType { NONE, BASIC, KAMU_SM }
+
+/** How the main window opens. */
+enum class WindowMode { MAXIMIZED, LAST, DEFAULT }
+
+/** What is drawn on signed PDFs; [NONE] keeps the signature invisible. */
+enum class StampStyle(val text: Boolean, val icon: Boolean) {
+    NONE(false, false), TEXT(true, false), ICON(false, true), ICON_TEXT(true, true)
+}
 
 /**
  * Signature level and time-stamping authority. Level, URL, authentication type and user name (or Kamu SM
@@ -25,6 +37,20 @@ class SigningSettings(private val persist: Boolean = true) {
     var user by mutableStateOf("")
         private set
 
+    var stamp by mutableStateOf(StampStyle.NONE)
+        private set
+    /** Height of the visible signature in points. */
+    var stampHeight by mutableStateOf(VisibleStamp.DEFAULT_HEIGHT)
+        private set
+
+    var libraryPath by mutableStateOf(Pkcs11Library.defaultPath())
+        private set
+    var windowMode by mutableStateOf(WindowMode.MAXIMIZED)
+        private set
+    /** Window size when it was last closed un-maximized; used by [WindowMode.LAST]. */
+    var lastWindowSize by mutableStateOf(DEFAULT_WINDOW_SIZE)
+        private set
+
     private var password: CharArray? = null
     var hasPassword by mutableStateOf(false)
         private set
@@ -35,6 +61,39 @@ class SigningSettings(private val persist: Boolean = true) {
             tsaUrl = prefs.get(URL, "")
             authType = TsaAuthType.entries.firstOrNull { it.name == prefs.get(AUTH, null) } ?: authType
             user = prefs.get(USER, "")
+            stamp = StampStyle.entries.firstOrNull { it.name == prefs.get(STAMP, null) } ?: stamp
+            stampHeight = prefs.getFloat(STAMP_HEIGHT, stampHeight).coerceIn(VisibleStamp.MIN_HEIGHT, VisibleStamp.MAX_HEIGHT)
+            libraryPath = prefs.get(LIBRARY, libraryPath)
+            windowMode = WindowMode.entries.firstOrNull { it.name == prefs.get(WINDOW_MODE, null) } ?: windowMode
+            lastWindowSize = DpSize(prefs.getInt(WINDOW_WIDTH, 1120).dp, prefs.getInt(WINDOW_HEIGHT, 760).dp)
+        }
+    }
+
+    fun updateStamp(value: StampStyle) {
+        stamp = value
+        if (persist) runCatching { prefs.put(STAMP, value.name) }
+    }
+
+    fun updateStampHeight(value: Float) {
+        stampHeight = value.coerceIn(VisibleStamp.MIN_HEIGHT, VisibleStamp.MAX_HEIGHT)
+        if (persist) runCatching { prefs.putFloat(STAMP_HEIGHT, stampHeight) }
+    }
+
+    fun updateLibraryPath(value: String) {
+        libraryPath = value.trim()
+        if (persist) runCatching { prefs.put(LIBRARY, libraryPath) }
+    }
+
+    fun updateWindowMode(value: WindowMode) {
+        windowMode = value
+        if (persist) runCatching { prefs.put(WINDOW_MODE, value.name) }
+    }
+
+    fun rememberWindowSize(size: DpSize) {
+        lastWindowSize = size
+        if (persist) runCatching {
+            prefs.putInt(WINDOW_WIDTH, size.width.value.toInt())
+            prefs.putInt(WINDOW_HEIGHT, size.height.value.toInt())
         }
     }
 
@@ -100,11 +159,18 @@ class SigningSettings(private val persist: Boolean = true) {
 
     companion object {
         const val KAMU_SM_URL = "http://zd.kamusm.gov.tr"
+        val DEFAULT_WINDOW_SIZE = DpSize(1120.dp, 760.dp)
 
         private const val LEVEL = "signingLevel"
         private const val URL = "tsaUrl"
         private const val AUTH = "tsaAuth"
         private const val USER = "tsaUser"
+        private const val STAMP = "pdfStamp"
+        private const val STAMP_HEIGHT = "pdfStampHeight"
+        private const val LIBRARY = "pkcs11Library"
+        private const val WINDOW_MODE = "windowMode"
+        private const val WINDOW_WIDTH = "windowWidth"
+        private const val WINDOW_HEIGHT = "windowHeight"
         private val prefs: Preferences get() = Preferences.userRoot().node("sh/yetkin/esigner")
     }
 }

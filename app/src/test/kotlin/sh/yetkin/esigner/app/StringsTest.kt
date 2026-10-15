@@ -46,6 +46,16 @@ class StringsTest {
             assertTrue("level.${it.name}.hint" in keys, it.name)
         }
         TsaAuthType.entries.forEach { assertTrue("settings.tsa.auth.${it.name}" in keys, it.name) }
+        SettingsSection.entries.forEach { assertTrue("settings.section.${it.name}" in keys, it.name) }
+        WindowMode.entries.forEach {
+            assertTrue("settings.window.${it.name}" in keys, it.name)
+            assertTrue("settings.window.${it.name}.hint" in keys, it.name)
+        }
+        Language.entries.forEach { assertTrue("language.${it.name}" in keys, it.name) }
+        StampStyle.entries.forEach {
+            assertTrue("stamp.${it.name}" in keys, it.name)
+            assertTrue("stamp.${it.name}.hint" in keys, it.name)
+        }
     }
 
     @Test

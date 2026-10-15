@@ -13,10 +13,14 @@ enum class SigningError(val isCardError: Boolean, val stopsBatch: Boolean) {
     CARD_NOT_FOUND(true),
     NO_SIGNING_KEY(true),
     CARD_FAILED(true),
+    /** The PKCS#11 module did not answer in time, e.g. it hangs after the card was pulled out. */
+    CARD_NOT_RESPONDING(true),
     FILE_NOT_FOUND(false),
     OUTPUT_EXISTS(false),
     FILE_UNSUPPORTED(false),
     WRITE_FAILED(false),
+    /** The chosen place for the visible signature overlaps another signature or leaves the page. */
+    STAMP_POSITION_INVALID(false),
     UNEXPECTED(false),
     NOT_SIGNED(false),
     NO_ORIGINAL_CONTENT(false),
@@ -46,11 +50,16 @@ class SigningException(
 
     val stopsBatch: Boolean get() = error.stopsBatch
 
-    /** Technical cause chain for a "details" view. Never contains the PIN. */
-    val technicalDetail: String?
-        get() = cause?.let { root ->
-            generateSequence(root) { it.cause }
-                .joinToString("\n") { "${it.javaClass.simpleName}: ${it.message}" }
+    /**
+     * Console-style report for the "technical details" view: the error code, the cause chain and the
+     * deepest cause's top stack frames. Never contains the PIN (PINs are never put in messages).
+     */
+    val technicalDetail: String
+        get() = buildString {
+            append(message)
+            val chain = generateSequence(cause) { it.cause }.toList()
+            chain.forEach { append("\nCaused by: ${it.javaClass.name}: ${it.message}") }
+            chain.lastOrNull()?.stackTrace?.take(12)?.forEach { append("\n    at $it") }
         }
 }
 

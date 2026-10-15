@@ -27,11 +27,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -135,7 +132,8 @@ private fun VerifyCard(state: AppState, item: VerifyItem, saveFile: (File) -> Fi
             }
             val report = (item.state as? VerifyState.Done)?.report
             report?.let { FileVerdictChip(it.verdict()) }
-            if (report?.hasEmbeddedContent == true) {
+            // Content behind a broken signature is not what was signed: do not offer it as if it were.
+            if (report?.hasEmbeddedContent == true && report.verdict() != FileVerdict.INVALID) {
                 TextButton(onClick = {
                     scope.launch {
                         val (opened, error) = state.openContent(item.file)

@@ -20,14 +20,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -182,6 +180,7 @@ private fun PinForm(state: AppState, flow: SignFlow.Confirm) {
     Row(
         Modifier
             .fillMaxWidth()
+            .handCursor(!flow.verifying)
             .toggleable(value = reviewed, enabled = !flow.verifying, role = Role.Checkbox, onValueChange = { reviewed = it }),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -192,7 +191,7 @@ private fun PinForm(state: AppState, flow: SignFlow.Confirm) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = state::cancelSign, enabled = !flow.verifying) { Text(str("common.cancel")) }
         Spacer(Modifier.width(8.dp))
-        Button(onClick = submit, enabled = canSubmit, modifier = Modifier.height(44.dp)) {
+        Button(onClick = submit, enabled = canSubmit) {
             if (flow.verifying) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                 Text(str("sign.dialog.verifying"), modifier = Modifier.padding(start = 10.dp))

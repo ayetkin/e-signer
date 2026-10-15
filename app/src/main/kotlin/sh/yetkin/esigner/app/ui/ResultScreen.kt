@@ -19,13 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,7 +99,8 @@ private fun ResultRow(result: FileResult) {
     val output = result.output
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        // Failed rows can grow with the details console; keep the icon next to the file name.
+        verticalAlignment = if (output == null) Alignment.Top else Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Icon(
@@ -128,6 +126,9 @@ private fun ResultRow(result: FileResult) {
                 style = MaterialTheme.typography.bodySmall,
                 color = if (output != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
             )
+            result.error?.detail?.takeIf { output == null && !result.skipped }?.let {
+                ErrorDetails(it, MaterialTheme.colorScheme.primary, Modifier.padding(top = 6.dp))
+            }
         }
         if (output != null) {
             TextButton(onClick = { openFile(output) }) { Text(str("result.open")) }

@@ -18,23 +18,14 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.ScanState
+import sh.yetkin.esigner.app.SettingsSection
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.DetectedCard
 import sh.yetkin.esigner.core.PinStatus
@@ -54,7 +46,7 @@ import sh.yetkin.esigner.core.PinStatus
 fun CardSelectScreen(state: AppState) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.align(Alignment.TopEnd).padding(20.dp)) {
-            LanguageSwitch(state.language, state::switchLanguage)
+            SettingsButton(state)
         }
         Column(
             Modifier
@@ -116,7 +108,7 @@ fun CardSelectScreen(state: AppState) {
             Button(
                 onClick = state::continueWithCard,
                 enabled = card != null && card.pinStatus != PinStatus.LOCKED,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().height(36.dp),
             ) {
                 Text(str("cardSelect.continue"), style = MaterialTheme.typography.titleSmall)
             }
@@ -128,7 +120,9 @@ fun CardSelectScreen(state: AppState) {
             TextButton(onClick = state::verifyWithoutCard, modifier = Modifier.fillMaxWidth()) {
                 Text(str("cardSelect.verifyWithoutCard"))
             }
-            AdvancedSettings(state)
+            TextButton(onClick = { state.openSettings(SettingsSection.CARD) }) {
+                Text(str("settings.card.open"), style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
@@ -173,6 +167,7 @@ private fun CardOption(card: DetectedCard, selected: Boolean, showRadio: Boolean
                 if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                 MaterialTheme.shapes.medium,
             )
+            .handCursor()
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -213,35 +208,5 @@ private fun CardOption(card: DetectedCard, selected: Boolean, showRadio: Boolean
             }
         }
         if (showRadio) RadioButton(selected = selected, onClick = null)
-    }
-}
-
-@Composable
-private fun AdvancedSettings(state: AppState) {
-    var open by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        TextButton(onClick = { open = !open }) {
-            Text(str("cardSelect.advanced"), style = MaterialTheme.typography.labelLarge)
-            Icon(
-                if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-        if (open) {
-            Panel(Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = state.libraryPath,
-                    onValueChange = { state.libraryPath = it },
-                    label = { Text(str("cardSelect.libraryPath")) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = state::retryScan) { Text(str("cardSelect.rescan")) }
-                }
-            }
-        }
     }
 }

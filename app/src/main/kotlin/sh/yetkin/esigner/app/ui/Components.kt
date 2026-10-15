@@ -5,6 +5,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +18,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -34,13 +41,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sh.yetkin.esigner.app.UiError
-import sh.yetkin.esigner.app.i18n.Language
 import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.CertificateInfo
@@ -121,7 +131,6 @@ fun Chip(text: String, tone: Tone = Tone.INFO) {
 @Composable
 fun Banner(text: String, tone: Tone, modifier: Modifier = Modifier, detail: String? = null) {
     val (bg, fg) = toneColors(tone)
-    var showDetail by remember(detail) { mutableStateOf(false) }
     Column(modifier.fillMaxWidth().background(bg, MaterialTheme.shapes.medium).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(
@@ -136,24 +145,79 @@ fun Banner(text: String, tone: Tone, modifier: Modifier = Modifier, detail: Stri
             )
             Text(text, style = MaterialTheme.typography.bodyMedium, color = fg, modifier = Modifier.weight(1f))
         }
-        if (detail != null) {
-            Text(
-                str(if (showDetail) "common.hideDetails" else "common.showDetails"),
-                style = MaterialTheme.typography.labelMedium,
-                color = fg,
-                modifier = Modifier.padding(start = 28.dp, top = 6.dp).clickable { showDetail = !showDetail },
-            )
-            if (showDetail) {
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = fg.copy(alpha = 0.85f),
-                    modifier = Modifier.padding(start = 28.dp, top = 6.dp),
-                )
+        if (detail != null) ErrorDetails(detail, fg, Modifier.padding(start = 28.dp, top = 6.dp))
+    }
+}
+
+/** A "technical details" toggle that opens [detail] in a console-style box with a copy button. */
+@Composable
+fun ErrorDetails(detail: String, linkColor: Color, modifier: Modifier = Modifier) {
+    var open by remember(detail) { mutableStateOf(false) }
+    Column(modifier.fillMaxWidth()) {
+        Text(
+            str(if (open) "common.hideDetails" else "common.showDetails"),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = linkColor,
+            modifier = Modifier.handCursor().clickable { open = !open },
+        )
+        if (open) Console(detail, Modifier.padding(top = 8.dp))
+    }
+}
+
+/** Terminal look on purpose (dark in both themes): monospace, selectable, scrollable, copyable. */
+@Composable
+fun Console(text: String, modifier: Modifier = Modifier) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(text) { mutableStateOf(false) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(CONSOLE_BG, MaterialTheme.shapes.small)
+            .border(1.dp, CONSOLE_BORDER, MaterialTheme.shapes.small),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            listOf(Color(0xFFFF5F57), Color(0xFFFEBC2E), Color(0xFF28C840)).forEach {
+                Box(Modifier.padding(end = 6.dp).size(9.dp).background(it, CircleShape))
             }
+            Spacer(Modifier.weight(1f))
+            Text(
+                str(if (copied) "common.copied" else "common.copy"),
+                style = MaterialTheme.typography.labelMedium,
+                color = CONSOLE_DIM,
+                modifier = Modifier
+                    .handCursor()
+                    .clickable {
+                        clipboard.setText(AnnotatedString(text))
+                        copied = true
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+        SelectionContainer {
+            Text(
+                text,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+                color = CONSOLE_TEXT,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+            )
         }
     }
 }
+
+private val CONSOLE_BG = Color(0xFF0D1117)
+private val CONSOLE_BORDER = Color(0xFF30363D)
+private val CONSOLE_TEXT = Color(0xFFC9D1D9)
+private val CONSOLE_DIM = Color(0xFF8B949E)
 
 @Composable
 fun ErrorBanner(error: UiError, modifier: Modifier = Modifier) {
@@ -163,34 +227,34 @@ fun ErrorBanner(error: UiError, modifier: Modifier = Modifier) {
 @Composable
 fun errorText(error: UiError): String = str("error.${error.error.name}", error.subject.orEmpty())
 
-/** Two-option switch; used for the language and the signature format. */
+/** macOS-style segmented switch for a few options. */
 @Composable
 fun <T> Segmented(options: List<Pair<T, String>>, selected: T, enabled: Boolean = true, onSelect: (T) -> Unit) {
+    // macOS segmented control: a recessed track, the selected segment raised in the control color.
     Row(
         Modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
-            .padding(3.dp),
+            .background(LocalExtraColors.current.selection, MaterialTheme.shapes.small)
+            .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         options.forEach { (value, label) ->
             val active = value == selected
             Text(
                 label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent, MaterialTheme.shapes.extraSmall)
+                    .shadow(animateDpAsState(if (active) 1.dp else 0.dp).value, MaterialTheme.shapes.extraSmall)
+                    .background(
+                        animateColorAsState(if (active) MaterialTheme.colorScheme.surface else Color.Transparent).value,
+                        MaterialTheme.shapes.extraSmall,
+                    )
+                    .handCursor(enabled && !active)
                     .clickable(enabled = enabled && !active) { onSelect(value) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 3.dp),
             )
         }
     }
-}
-
-@Composable
-fun LanguageSwitch(current: Language, onSelect: (Language) -> Unit) {
-    Segmented(listOf(Language.TR to "TR", Language.EN to "EN"), current, onSelect = onSelect)
 }
 
 /** A softly pulsing dot next to [text], signalling that detection runs on its own. */

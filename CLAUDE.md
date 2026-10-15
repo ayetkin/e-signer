@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Türkiye'deki nitelikli e-imza kartlarıyla (ilk hedef: AKİS) PDF ve diğer dosyaları imzalayan,
 macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulaması.
-Önce şirket içi kullanım, ileride ticari ürün. Aşama aşama ilerliyoruz.
+GitHub'da AGPL-3.0 ile açık kaynak (`LICENSE`, üçüncü taraf lisansları `NOTICE`). Aşama aşama ilerliyoruz.
+Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya herkese açık, kişisel bilgi yazma.
 
 ## Depo yapısı
 
@@ -58,19 +59,22 @@ macOS (arm64 + x86_64) ve Windows (x64) üzerinde çalışan masaüstü uygulama
   tüm dosyalar, oturum kapanır → sonuç ekranı. Pencereler in-tree overlay (native dialog değil).
   - `SigningSettings`: imza seviyesi, TSA adresi, kimlik doğrulama tipi ve kullanıcı/müşteri no `java.util.prefs`'te;
     TSA parolası yalnızca bellekte (uygulama kapanınca istenir), her imza turuna kopyası verilir ve tur bitince
-    sıfırlanır. Zaman damgalı seviyede TSA eksikse "İmzala" kapalı. Ayar penceresi `ui/SettingsDialog.kt`
-    (alt çubuktaki "İmza seviyesi" düğmesi).
+    sıfırlanır. Zaman damgalı seviyede TSA eksikse "İmzala" kapalı. PKCS#11 kütüphane yolu ve açılış pencere
+    modu (`WindowMode`: ekranı kapla / son boyut / standart) da burada, prefs'te.
+  - Ayar penceresi `ui/SettingsDialog.kt`: bölümlü (`SettingsSection`: Genel = dil + pencere, İmza = seviye +
+    görünür imza, Zaman damgası, Kart = kütüphane yolu + takılı kartların PIN'siz okunan ayrıntıları). Taslak
+    üzerinde çalışır, "Kaydet" ile uygulanır. Kenar çubuğundaki "Ayarlar", kart ekranındaki dişli ve macOS
+    Preferences menüsü açar.
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
     `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
 - Arayüz düzeni: çalışma alanı ve sonuç ekranı `AppShell` (`ui/Sidebar.kt`) içinde. Sol panelde sekmeler,
-  kart (Değiştir), imza ayarları (biçim, seviye, Düzenle) ve dil; sağda içerik ve yalnızca "İmzala" düğmeli alt çubuk.
+  kart (Değiştir), imza ayarları (biçim, görünür imza, seviye) ve "Ayarlar"; sağda içerik ve yalnızca "İmzala" düğmeli alt çubuk.
 - Simge: `ui/AppIcon.kt` kodla çizilir (uygulama içi logo + pencere simgesi). `IconTest` 1024 px PNG üretir
   (`app/build/icon/`), sonuçlar `app/packaging/` altına kopyalanır; `icon.icns` macOS'ta `sips` + `iconutil`
   ile üretildi. Windows `.ico` henüz yok.
 - `tools/screenshots.Dockerfile` + `app/src/test/.../ScreenshotTest.kt`: tüm ekranları örnek verilerle
   `app/build/screenshots/*.png`'ye çizer (TR, EN, koyu tema). Arayüz değişikliğinden sonra görüntülere bakarak
-  kontrol et (ekran kaydı izni yok, Mac'teki pencere görülemiyor).
-- `eimza-test/`: ilk CLI prototipi (ayrı Gradle projesi, root build'e dahil değil). Sadece referans.
+  kontrol et.
 
 ## Komutlar
 
@@ -102,9 +106,9 @@ container run --rm -m 6G -c 4 -v "$PWD:/src" -w /src -e GRADLE_USER_HOME=/src/.g
 container build -m 8G -c 4 --output type=local,dest=dist .
 dist/linux_arm64/run.sh
 
-# Yerel macOS .app (Dock/menüde "java" yerine "E-Imza" ve uygulama simgesi). jpackage, vendor/'daki
+# Yerel macOS .app (Dock/menüde "java" yerine "E-Signer" ve uygulama simgesi). jpackage, vendor/'daki
 # hedef JDK arşivinden vendor/target-jdk/ altına açılıp kullanılır, sisteme bir şey kurulmaz.
-tools/package-mac.sh && open dist/mac/E-Imza.app
+tools/package-mac.sh && open dist/mac/E-Signer.app
 ```
 
 - **Bellek kuralı (min 4 GB):** Apple container varsayılanları `container.memory = 1gb`, `build.memory = 2048mb`
@@ -148,13 +152,11 @@ tools/package-mac.sh && open dist/mac/E-Imza.app
 - SunPKCS11 ile `SHA256withRSA` sorunsuz çalışıyor (karta özel mekanizma ayarı gerekmedi).
 - Kartta tek imza anahtarı/sertifikası var.
 - DSS 6.1 PDFBox 2.0.x getirir (3.x değil). Yazılım anahtarı sınıfı `Pkcs12SignatureToken` (`KeyStoreSignatureToken` yok).
-- Kullanıcının kartı E-GÜVEN NES S7 hiyerarşisinde (Kamu SM değil): ara `ECCNESS7`, kök `E-GÜVEN Kök ESHS S7`.
-  Sertifikada `QcCompliance` (`0.4.0.1862.1.1`) ve 5070 QC beyanı, OCSP `ocsp384.e-guven.com`.
 - Uygulamanın attığı imzalar şu an PAdES/CAdES B-B (zaman damgası yok): doğrulamada imza zamanı "kanıtlanmıyor"
   görünür, sertifika süresi dolunca OUT_OF_BOUNDS_NO_POE ile belirsize düşer. Çözüm yol haritası 4. adım.
 - **Görünmez imza alanı sıfır boyutlu olmamalı:** DSS'in varsayılan görünmez imzası `/Rect [0 0 0 0]` yazar. Bazı
-  PDF okuyucular (kullanıcının Mac'teki okuyucusu) kesirli A4 sayfalarda (`595.27 x 841.89`, yaygın üretici çıktısı)
-  bu alanı "Unsigned Signature Field" gösterir; tam sayı boyutlarda (`595 x 842`) sorun yok. Kullanıcıyla adım adım
+  PDF okuyucular kesirli A4 sayfalarda (`595.27 x 841.89`, yaygın üretici çıktısı)
+  bu alanı "Unsigned Signature Field" gösterir; tam sayı boyutlarda (`595 x 842`) sorun yok. Adım adım
   test edilerek bulundu (alt filtre, `/OpenAction`, belge `/ID`, içerik, yazı tipi, dosya boyutu elendi).
   Çözüm `DocumentSigner`: ilk sayfanın üst kenarında 1x1 pt şeffaf PNG görünümlü alan; mevcut annotasyonlarla
   çakışmayan ilk boş nokta seçilir (DSS çakışan alanı reddeder, üst üste imzayı kırar).
@@ -179,16 +181,12 @@ tools/package-mac.sh && open dist/mac/E-Imza.app
 
 ## Build ve ortam
 
-- Kullanıcı Mac'e geliştirme aracı kurmak istemiyor (brew ile Java/Gradle kurma). Lokal build'ler
-  **Apple container** (`container build`) ile alınır.
+- İki derleme yolu: JDK 21 ile `./gradlew` (Gradle wrapper, CI de bunu kullanır: `.github/workflows/ci.yml`) ya da
+  `Makefile` ile **Apple container** (`container build`), hostta JDK gerekmeden.
 - Dockerfile akışı (root): `gradle:8-jdk21` ile test + derle → hedef platform JDK'sı (`vendor/target-jdk.tar.gz`,
   Mac'te indirilir) üzerinden `jlink` ile runtime üret → `scratch` aşamasıyla `dist/` dışa aktar.
   jlink'teki JDK ile hedef JDK sürümü birebir aynı olmalı (imaj sürümü sabitlenmeli).
 - `container build ... --output type=local,dest=dist .` çıktıyı `dist/linux_arm64/` altına koyar.
-- Apple container'ın ağı zaman zaman dışarı çıkamıyor (ping gateway'e gider, internete gitmez), bir süre
-  sonra kendiliğinden düzeldi. Build ağ hatasıyla düşerse önce
-  `container run --rm alpine ping -c2 1.1.1.1` ile kontrol et.
-- Kullanıcının ağında `api.adoptium.net` TLS hatası veriyor; JDK'ları GitHub release'lerinden indir.
 - Dağıtım paketleri (`.dmg`, `.msi`) her platformda kendi üzerinde `jpackage` ile üretilmeli → GitHub Actions matrisi.
 
 ## Yol haritası
@@ -197,7 +195,20 @@ tools/package-mac.sh && open dist/mac/E-Imza.app
    listesi (okunabilir ad, TC no maskeli), PIN girişi, PAdES/CAdES seçimi, sonuç ekranı.
 2. **Yapıldı, gerçek imzalı dosyayla denenmesi gerekiyor:** İmza doğrulama (Doğrula sekmesi), BTK yetkili ESHS
    kökleriyle gömülü güven listesi, 5070 nitelik kontrolü, `.imz` içeriğini açma/kaydetme.
-3. Görünür imza ve sayfadaki konum seçimi; `.imz` dosyasını açıp içeriği gösterme.
+3. **Kısmen yapıldı:** PDF önizleme (`ui/PdfPreview.kt`, PDFBox ile sayfa sayfa) ve görünür imza
+   (`core/VisibleStamp.kt`: yazı ve/veya simge, kenar çubuğunda "PDF üzerinde"). Kullanıcı önizlemede sayfaya
+   tıklayarak ya da kutuyu sürükleyerek yer seçer (dosya başına `AppState.stampPositions`); seçilmezse son sayfanın
+   sağ altında önceki imzalarla çakışmayan ilk boş yer. Yazı kutusu genişliği metinden ölçülür (`VisibleStamp.size`),
+   böylece DSS `FILL_BOX` kendi boşluğunu eklemez; simge ile yazı arasındaki boşluk simge PNG'sinin sağına eklenen
+   ve üst/alt kenarlarına eklenen saydam alan (`ICON_RATIO` 0.7: simge yazı yüksekliğinin %70'i, `GAP_RATIO`).
+   Yükseklik önizlemede kutunun köşesinden çekilerek 16-80 pt (varsayılan 30, `SigningSettings.stampHeight`, tüm
+   PDF'ler için tek değer; ayar penceresinde de var). Önizleme sayfaları ekranın piksel genişliğinde çizilir (Retina
+   dahil, en fazla 4096 px). Yakınlaştırma: düğmeler, Ctrl/Cmd + kaydırma, trackpad pinch (%50-400).
+   **Pinch:** Java'da genel API yok; `MacGestures` JDK'nın macOS'a özel `com.apple.eawt.event` paketini reflection
+   ile kullanır (derleme Linux'ta olduğu için). Çalıştırırken `--add-exports java.desktop/com.apple.eawt.event=ALL-UNNAMED`
+   gerekir (run.sh, package-mac.sh, app/build.gradle.kts); yoksa sessizce devre dışı kalır.
+   Çalışma alanı: içerik 640 dp'den genişse liste ve önizleme yan yana (2:3), değilse alt alta. Çakışan/taşan seçim `STAMP_POSITION_INVALID`.
+   Döndürülmüş sayfalarda yer seçimi kapalı. Kalan: `.imz` içeriğini gösterme.
 4. **Yapıldı, gerçek TSA ile denenmesi gerekiyor:** Zaman damgası (B-T), B-LT (OCSP/CRL gömülü), Kamu SM kimlik
    başlığı, ayar penceresi. Kalan: B-LTA (arşiv zaman damgası).
 5. Seri ve paralel imza.

@@ -1,11 +1,11 @@
 #!/bin/sh
 # Wraps the container build output (dist/linux_arm64: lib/ + jlink'ed macOS runtime/) into a native
-# macOS app bundle with jpackage, so the Dock and menu bar show "E-Imza" and the app icon instead of "java".
+# macOS app bundle with jpackage, so the Dock and menu bar show "E-Signer" and the app icon instead of "java".
 #
 # jpackage must run on macOS. It is taken from the target JDK already downloaded for the container
 # build (vendor/target-jdk.tar.gz), extracted under vendor/; nothing is installed on the system.
 # Usage (from the repository root, after `container build ... --output type=local,dest=dist .`):
-#   tools/package-mac.sh            -> dist/mac/E-Imza.app
+#   tools/package-mac.sh            -> dist/mac/E-Signer.app
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -23,11 +23,11 @@ fi
 JPACKAGE="$(find "$JDK_DIR" -path '*/Contents/Home/bin/jpackage' | head -1)"
 test -n "$JPACKAGE" || { echo "jpackage not found in vendor/target-jdk.tar.gz" >&2; exit 1; }
 
-rm -rf "$OUT/E-Imza.app"
+rm -rf "$OUT/E-Signer.app"
 mkdir -p "$OUT"
 "$JPACKAGE" \
     --type app-image \
-    --name "E-Imza" \
+    --name "E-Signer" \
     --app-version "$VERSION" \
     --vendor "Yetkin" \
     --mac-package-identifier "sh.yetkin.esigner" \
@@ -39,6 +39,7 @@ mkdir -p "$OUT"
     --java-options "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn" \
     --java-options "--add-modules=jdk.crypto.cryptoki" \
     --java-options "--add-exports=jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED" \
+    --java-options "--add-exports=java.desktop/com.apple.eawt.event=ALL-UNNAMED" \
     --dest "$OUT"
 
-echo "$OUT/E-Imza.app"
+echo "$OUT/E-Signer.app"

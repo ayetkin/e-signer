@@ -5,7 +5,10 @@ import eu.europa.esig.dss.cades.CAdESSignatureParameters
 import eu.europa.esig.dss.cades.signature.CAdESService
 import eu.europa.esig.dss.enumerations.DigestAlgorithm
 import eu.europa.esig.dss.enumerations.SignatureLevel
+import eu.europa.esig.dss.enumerations.ImageScaling
 import eu.europa.esig.dss.enumerations.SignaturePackaging
+import eu.europa.esig.dss.enumerations.SignerTextPosition
+import eu.europa.esig.dss.enumerations.TextWrapping
 import eu.europa.esig.dss.model.DSSDocument
 import eu.europa.esig.dss.model.FileDocument
 import eu.europa.esig.dss.model.InMemoryDocument
@@ -14,6 +17,7 @@ import eu.europa.esig.dss.model.ToBeSigned
 import eu.europa.esig.dss.pades.PAdESSignatureParameters
 import eu.europa.esig.dss.pades.SignatureFieldParameters
 import eu.europa.esig.dss.pades.SignatureImageParameters
+import eu.europa.esig.dss.pades.SignatureImageTextParameters
 import eu.europa.esig.dss.pades.signature.PAdESService
 import eu.europa.esig.dss.signature.DocumentSignatureService
 import eu.europa.esig.dss.spi.validation.CertificateVerifier
@@ -24,6 +28,7 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
+import java.util.Date
 import javax.imageio.ImageIO
 import org.apache.pdfbox.pdmodel.PDDocument
 
@@ -36,12 +41,16 @@ import org.apache.pdfbox.pdmodel.PDDocument
  * [level] B-T and B-LT need a [timestampSource]; the timestamp is requested in the last step, after the
  * card has signed. B-LT also embeds the chains and OCSP/CRL responses for the signer and the TSA, fetched
  * online through [verifier] and checked against the bundled trust anchors.
+ *
+ * [stamp] draws a visible signature on PDFs, where the user chose or by default bottom-right on the last page;
+ * without it the signature is invisible.
  */
 class DocumentSigner(
     private val level: SigningLevel = SigningLevel.BASELINE_B,
     private val timestampSource: TSPSource? = null,
     private val verifier: CertificateVerifier =
         certificateVerifier(TrustAnchors.bundled(), online = level == SigningLevel.BASELINE_LT),
+    private val stamp: VisibleStamp? = null,
 ) {
     private val digestAlgorithm = DigestAlgorithm.SHA256
 
@@ -51,6 +60,7 @@ class DocumentSigner(
         token: SignatureTokenConnection,
         key: DSSPrivateKeyEntry,
         output: File = outputFileFor(input, format),
+        stampAt: StampPosition? = null,
     ): File {
         if (!input.isFile) throw SigningException(SigningError.FILE_NOT_FOUND, input.name)
         if (output.exists()) throw SigningException(SigningError.OUTPUT_EXISTS, output.name)
@@ -60,7 +70,7 @@ class DocumentSigner(
         val signed = when (format) {
             SignatureFormat.PADES -> signWith(
                 PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
-                document, padesParameters(key, freeCornerX(input)), token, key,
+                document, padesParameters(key, input, stampAt), token, key,
             )
             SignatureFormat.CADES -> signWith(
                 CAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
@@ -87,7 +97,7 @@ class DocumentSigner(
         return fileStep { service.signDocument(document, parameters, value) }
     }
 
-    private fun padesParameters(key: DSSPrivateKeyEntry, widgetX: Float) = PAdESSignatureParameters().apply {
+    private fun padesParameters(key: DSSPrivateKeyEntry, input: File, stampAt: StampPosition?) = PAdESSignatureParameters().apply {
         signatureLevel = when (level) {
             SigningLevel.BASELINE_B -> SignatureLevel.PAdES_BASELINE_B
             SigningLevel.BASELINE_T -> SignatureLevel.PAdES_BASELINE_T
@@ -96,7 +106,7 @@ class DocumentSigner(
         digestAlgorithm = this@DocumentSigner.digestAlgorithm
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
-        imageParameters = invisibleWidget(widgetX)
+        imageParameters = stamp?.let { visibleWidget(it, key, bLevel().signingDate, input, stampAt) } ?: invisibleWidget(input)
     }
 
     /**
@@ -104,16 +114,52 @@ class DocumentSigner(
      * Some PDF readers ignore a zero-size signature widget on pages with fractional sizes (595.27 x 841.89,
      * the common A4 output) and show "Unsigned Signature Field". The document content is unchanged.
      */
-    private fun invisibleWidget(x: Float) = SignatureImageParameters().apply {
+    private fun invisibleWidget(input: File) = SignatureImageParameters().apply {
         image = InMemoryDocument(transparentPixel, "invisible.png")
-        fieldParameters = SignatureFieldParameters().apply {
-            page = 1
-            originX = x
-            originY = 0f
-            width = 1f
-            height = 1f
+        // The first spot along the top edge of page 1 free of earlier signatures' widgets.
+        val position = withPdf(input) { doc ->
+            generateSequence(0f) { it + 2f }.take(MAX_SLOTS).map { StampPosition(1, it, 0f) }
+                .firstOrNull { stampFits(doc, it, 1f, 1f) }
         }
+        fieldParameters = field(position ?: StampPosition(1, 0f, 0f), 1f, 1f)
     }
+
+    /** The image and the label, signer's name and signing time at [stampAt], or the default spot. */
+    private fun visibleWidget(stamp: VisibleStamp, key: DSSPrivateKeyEntry, signingDate: Date, input: File, stampAt: StampPosition?) =
+        SignatureImageParameters().apply {
+            val name = CertificateInfo.from(key.certificate.certificate).commonName
+            stamp.widgetImage()?.let {
+                image = InMemoryDocument(it, "stamp.png")
+                imageScaling = ImageScaling.ZOOM_AND_CENTER
+            }
+            stamp.text(name, signingDate.toInstant())?.let {
+                textParameters = SignatureImageTextParameters().apply {
+                    text = it
+                    textWrapping = TextWrapping.FILL_BOX
+                    signerTextPosition = SignerTextPosition.RIGHT
+                    padding = stamp.padding
+                }
+            }
+            val (width, height) = stamp.size(name)
+            // The chosen spot, or the default one when the page has room; never a spot DSS would reject.
+            val position = withPdf(input) { doc ->
+                (stampAt ?: defaultStampPosition(doc, width, height)).takeIf { stampFits(doc, it, width, height) }
+                    ?: throw SigningException(SigningError.STAMP_POSITION_INVALID, input.name)
+            } ?: throw SigningException(SigningError.FILE_UNSUPPORTED, input.name)
+            fieldParameters = field(position, width, height)
+        }
+
+    private fun field(position: StampPosition, width: Float, height: Float) = SignatureFieldParameters().apply {
+        page = position.page
+        originX = position.x
+        originY = position.y
+        this.width = width
+        this.height = height
+    }
+
+    /** Null when PDFBox cannot open the file; DSS then reports it as unsupported. */
+    private fun <T> withPdf(input: File, block: (PDDocument) -> T): T? =
+        runCatching { PDDocument.load(input) }.getOrNull()?.use(block)
 
     private fun cadesParameters(key: DSSPrivateKeyEntry) = CAdESSignatureParameters().apply {
         signatureLevel = when (level) {
@@ -126,26 +172,6 @@ class DocumentSigner(
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
     }
-
-    /**
-     * First spot along the top edge of page 1 where the 1x1 widget overlaps no existing annotation, so earlier
-     * signatures' widgets (DSS rejects overlapping fields) never block a new signature.
-     */
-    private fun freeCornerX(input: File): Float = runCatching {
-        PDDocument.load(input).use { doc ->
-            val page = doc.getPage(0)
-            val box = page.cropBox
-            val taken = page.annotations.mapNotNull { it.rectangle }
-            generateSequence(0f) { it + 2f }.take(MAX_SLOTS).firstOrNull { x ->
-                val left = box.lowerLeftX + x
-                val top = box.upperRightY
-                taken.none { r ->
-                    r.lowerLeftX < left + 1.5f && r.upperRightX > left - 0.5f &&
-                        r.lowerLeftY < top + 0.5f && r.upperRightY > top - 1.5f
-                }
-            }
-        }
-    }.getOrNull() ?: 0f
 
     private companion object {
         const val MAX_SLOTS = 200
@@ -186,3 +212,4 @@ class DocumentSigner(
         }
     }
 }
+

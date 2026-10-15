@@ -1,14 +1,20 @@
 package sh.yetkin.esigner.app.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,16 +26,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +46,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,9 +54,11 @@ import androidx.compose.ui.unit.sp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.Tab
+import sh.yetkin.esigner.app.stampIcon
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.SignatureFormat
 import sh.yetkin.esigner.core.formatFor
+import org.jetbrains.skia.Image
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
@@ -60,6 +66,7 @@ import java.io.File
 @Composable
 fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> File?) {
     var hovering by remember { mutableStateOf(false) }
+    var previewed by remember { mutableStateOf<File?>(null) }
     val verify = state.tab == Tab.VERIFY
     AppShell(state) {
         Box(
@@ -70,18 +77,47 @@ fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> 
                     onHover = { hovering = it },
                     onFiles = { if (state.tab == Tab.VERIFY) state.addForVerify(it) else state.addFiles(it) },
                 )
-                .padding(24.dp),
+                // The title bar inset above already separates the panels from the window edge.
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = if (LocalTitleBarInset.current > 0.dp) 0.dp else 24.dp),
         ) {
-            when {
-                verify -> VerifyPane(state, hovering, pickFiles, saveFile, Modifier.fillMaxSize())
-                state.files.isEmpty() -> DropZone(
-                    hovering = hovering,
-                    title = str(if (hovering) "files.dropNow" else "files.dropTitle"),
-                    body = str("files.dropBody"),
-                    pickFiles = pickFiles,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                else -> FileList(state, hovering, pickFiles, Modifier.fillMaxSize())
+            // Fades between the verify pane, the drop zone and the file list.
+            val page = when {
+                verify -> "verify"
+                state.files.isEmpty() -> "drop"
+                else -> "files"
+            }
+            Crossfade(page) { page ->
+                when (page) {
+                    "verify" -> VerifyPane(state, hovering, pickFiles, saveFile, Modifier.fillMaxSize())
+                    "drop" -> DropZone(
+                        hovering = hovering,
+                        title = str(if (hovering) "files.dropNow" else "files.dropTitle"),
+                        body = str("files.dropBody"),
+                        pickFiles = pickFiles,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    else -> {
+                        // The chosen PDF, or the first one; the preview disappears when no PDF is in the list.
+                        val preview = previewed?.takeIf { it in state.files } ?: state.files.firstOrNull { it.isPdf }
+                        val list = @Composable { modifier: Modifier ->
+                            FileList(state, hovering, pickFiles, preview, { previewed = it }, modifier)
+                        }
+                        BoxWithConstraints(Modifier.fillMaxSize()) {
+                            when {
+                                preview == null -> list(Modifier.fillMaxSize())
+                                // Side by side when there is room, otherwise the preview goes under the list.
+                                maxWidth >= SIDE_BY_SIDE_MIN_WIDTH -> Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    list(Modifier.weight(2f).fillMaxHeight())
+                                    key(preview) { PdfPreview(preview, stampPlacement(state, preview), Modifier.weight(3f).fillMaxHeight()) }
+                                }
+                                else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    list(Modifier.weight(2f).fillMaxWidth())
+                                    key(preview) { PdfPreview(preview, stampPlacement(state, preview), Modifier.weight(3f).fillMaxWidth()) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         if (!verify) BottomBar(state)
@@ -117,7 +153,14 @@ fun DropZone(hovering: Boolean, title: String, body: String, pickFiles: () -> Un
 }
 
 @Composable
-private fun FileList(state: AppState, hovering: Boolean, pickFiles: () -> Unit, modifier: Modifier) {
+private fun FileList(
+    state: AppState,
+    hovering: Boolean,
+    pickFiles: () -> Unit,
+    previewed: File?,
+    onPreview: (File) -> Unit,
+    modifier: Modifier,
+) {
     val editable = state.flow == SignFlow.Idle
     Panel(
         modifier.then(
@@ -125,44 +168,72 @@ private fun FileList(state: AppState, hovering: Boolean, pickFiles: () -> Unit, 
         ),
         padding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(str("files.count", state.files.size), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)) {
+            // A narrow list keeps only the icon on the add button.
+            val compact = maxWidth < COMPACT_HEADER_WIDTH
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        str("files.count", state.files.size),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (editable) {
+                        TextButton(onClick = state::clearFiles) { Text(str("files.clear")) }
+                        OutlinedButton(onClick = pickFiles) {
+                            Icon(Icons.Default.Add, contentDescription = str("files.add"), modifier = Modifier.size(18.dp))
+                            if (!compact) Text(str("files.add"), modifier = Modifier.padding(start = 6.dp))
+                        }
+                    }
+                }
                 Text(
                     str(if (hovering) "files.dropNow" else "files.reviewHint"),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (hovering) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
-            }
-            if (editable) {
-                TextButton(onClick = state::clearFiles) { Text(str("files.clear")) }
-                OutlinedButton(onClick = pickFiles) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(str("files.add"), modifier = Modifier.padding(start = 6.dp))
-                }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         LazyColumn(Modifier.weight(1f)) {
             items(state.files, key = { it.path }) { file ->
-                FileRow(file, formatFor(file, state.mode), removable = editable, onRemove = { state.removeFile(file) })
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+                FileRow(
+                    file,
+                    formatFor(file, state.mode),
+                    removable = editable,
+                    onRemove = { state.removeFile(file) },
+                    selected = file == previewed,
+                    onSelect = if (file.isPdf) ({ onPreview(file) }) else null,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 60.dp))
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FileRow(file: File, format: SignatureFormat, removable: Boolean, onRemove: () -> Unit) {
+private fun FileRow(
+    file: File,
+    format: SignatureFormat,
+    removable: Boolean,
+    onRemove: () -> Unit,
+    selected: Boolean,
+    onSelect: (() -> Unit)?,
+) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .background(animateColorAsState(if (selected) LocalExtraColors.current.selection else Color.Transparent).value)
+            .handCursor()
+            // Single click previews a PDF, double click opens any file in its own app.
+            .combinedClickable(onClick = { onSelect?.invoke() }, onDoubleClick = { openFile(file) })
+            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ExtensionBadge(file.extension)
+        ExtensionBadge(file.extension, small = true)
         Column(Modifier.weight(1f)) {
             Text(
                 file.name,
@@ -171,16 +242,15 @@ private fun FileRow(file: File, format: SignatureFormat, removable: Boolean, onR
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                "${file.sizeLabel()}  ·  ${file.parent}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                Modifier.padding(top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FormatChip(format)
+                Text(file.sizeLabel(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        FormatChip(format)
-        TextButton(onClick = { openFile(file) }) { Text(str("files.view")) }
         if (removable) {
             IconButton(onClick = onRemove) {
                 Icon(
@@ -195,11 +265,11 @@ private fun FileRow(file: File, format: SignatureFormat, removable: Boolean, onR
 }
 
 @Composable
-fun ExtensionBadge(extension: String) {
+fun ExtensionBadge(extension: String, small: Boolean = false) {
     val pdf = extension.equals("pdf", ignoreCase = true)
     Box(
         Modifier
-            .size(width = 42.dp, height = 48.dp)
+            .size(width = if (small) 32.dp else 42.dp, height = if (small) 38.dp else 48.dp)
             .background(
                 if (pdf) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
                 MaterialTheme.shapes.small,
@@ -210,7 +280,7 @@ fun ExtensionBadge(extension: String) {
             extension.uppercase().take(4).ifEmpty { "?" },
             color = if (pdf) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
+            fontSize = if (small) 9.sp else 11.sp,
         )
     }
 }
@@ -242,7 +312,7 @@ private fun BottomBar(state: AppState) {
             Button(
                 onClick = state::requestSign,
                 enabled = state.canSign,
-                modifier = Modifier.height(44.dp),
+                modifier = Modifier.height(36.dp),
             ) {
                 Text(
                     if (count == 0) str("sign.button") else str("sign.buttonCount", count),
@@ -253,6 +323,30 @@ private fun BottomBar(state: AppState) {
         }
     }
 }
+
+/** Null when the PDF gets no visible signature: invisible style, or signed as a separate .imz. */
+@Composable
+private fun stampPlacement(state: AppState, file: File): StampPlacement? {
+    val stamp = state.visibleStamp ?: return null
+    if (formatFor(file, state.mode) != SignatureFormat.PADES) return null
+    val icon = remember { Image.makeFromEncoded(stampIcon).toComposeImageBitmap() }
+    return StampPlacement(
+        stamp,
+        state.signerName,
+        icon,
+        state.stampPositions[file],
+        editable = state.flow == SignFlow.Idle,
+        focused = state.stampFocused,
+        onFocus = { state.stampFocused = true },
+        onResize = state.settings::updateStampHeight,
+    ) { state.placeStamp(file, it) }
+}
+
+/** Below this the preview goes under the file list instead of next to it. */
+private val SIDE_BY_SIDE_MIN_WIDTH = 640.dp
+private val COMPACT_HEADER_WIDTH = 340.dp
+
+private val File.isPdf get() = extension.equals("pdf", ignoreCase = true)
 
 private fun Modifier.dashedBorder(color: Color) = drawBehind {
     drawRoundRect(

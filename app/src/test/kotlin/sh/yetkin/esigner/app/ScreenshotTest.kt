@@ -19,6 +19,12 @@ import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.Verdict
 import sh.yetkin.esigner.core.SigningError
 import sh.yetkin.esigner.core.SigningLevel
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
+import org.apache.pdfbox.pdmodel.font.PDType1Font
+import sh.yetkin.esigner.core.StampPosition
 import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -48,6 +54,26 @@ class ScreenshotTest {
         "Invoice-1042.xml" to 9_400,
         "Technical specification v3.docx" to 1_850_000,
     ).map { (name, size) -> File(docs, name).apply { writeBytes(ByteArray(size)) } }
+        .also { samplePdf(it.first()) }
+
+    /** A one-page document with a heading and some lines, so the preview has something to show. */
+    private fun samplePdf(file: File) = PDDocument().use { doc ->
+        val page = PDPage(PDRectangle.A4)
+        doc.addPage(page)
+        PDPageContentStream(doc, page).use { content ->
+            content.beginText()
+            content.setFont(PDType1Font.HELVETICA_BOLD, 20f)
+            content.newLineAtOffset(60f, 760f)
+            content.showText("Service Agreement")
+            content.setFont(PDType1Font.HELVETICA, 11f)
+            repeat(30) {
+                content.newLineAtOffset(0f, if (it == 0) -36f else -18f)
+                content.showText("Clause ${it + 1}. The parties agree to the terms set out in this section of the agreement.")
+            }
+            content.endText()
+        }
+        doc.save(file)
+    }
 
     private fun state(language: Language, setup: AppState.() -> Unit): AppState =
         AppState(CoroutineScope(Dispatchers.Unconfined), persistSettings = false).apply {
@@ -56,12 +82,16 @@ class ScreenshotTest {
         }
 
     @OptIn(ExperimentalComposeUiApi::class)
-    private fun shot(name: String, state: AppState, dark: Boolean = false) {
-        val scene = ImageComposeScene(width = 1040 * 2, height = 720 * 2, density = Density(2f)) {
+    private fun shot(name: String, state: AppState, dark: Boolean = false, width: Int = 1040) {
+        val scene = ImageComposeScene(width = width * 2, height = 720 * 2, density = Density(2f)) {
             AppTheme(dark = dark) { App(state, pickFiles = {}) }
         }
-        scene.render(0)
-        val image = scene.render(500_000_000)
+        // A few frames with real time in between: the PDF preview loads and renders on background threads.
+        repeat(3) {
+            scene.render(it * 250_000_000L)
+            Thread.sleep(150)
+        }
+        val image = scene.render(1_000_000_000)
         File(out, "$name.png").writeBytes(image.encodeToData(EncodedImageFormat.PNG)!!.bytes)
         scene.close()
     }
@@ -92,6 +122,18 @@ class ScreenshotTest {
             }
             shot("$l-10-workspace-empty", state(lang, ready))
             shot("$l-11-workspace-files", state(lang) { ready(); files.addAll(sampleFiles()) })
+            shot("$l-11b-workspace-stamp", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                settings.updateStamp(StampStyle.ICON_TEXT)
+                placeStamp(files.first(), StampPosition(1, 300f, 120f))
+            })
+            // The smallest window: the preview goes under the list.
+            shot("$l-11c-workspace-narrow", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                settings.updateStamp(StampStyle.TEXT)
+            }, width = 880)
             shot("$l-12-dialog", state(lang) { ready(); files.addAll(sampleFiles()); flow = SignFlow.Confirm() })
             shot("$l-13-dialog-wrong-pin", state(lang) {
                 ready()
@@ -120,8 +162,10 @@ class ScreenshotTest {
             val kamuSm: AppState.() -> Unit = {
                 settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
             }
-            shot("$l-17-settings-kamusm", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); settingsOpen = true })
-            shot("$l-18-settings-standard", state(lang) { ready(); files.addAll(sampleFiles()); settingsOpen = true })
+            shot("$l-17-settings-kamusm", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); openSettings(SettingsSection.TIMESTAMP) })
+            shot("$l-18-settings-signature", state(lang) { ready(); files.addAll(sampleFiles()); openSettings(SettingsSection.SIGNATURE) })
+            shot("$l-18b-settings-general", state(lang) { ready(); openSettings() })
+            shot("$l-18c-settings-card", state(lang) { ready(); openSettings(SettingsSection.CARD) })
             shot("$l-19-workspace-tsa-missing", state(lang) {
                 ready()
                 files.addAll(sampleFiles())
@@ -135,7 +179,17 @@ class ScreenshotTest {
                 files.addAll(f)
                 flow = SignFlow.Finished(
                     listOf(
-                        FileResult(f[0], null, UiError(SigningError.TIMESTAMP_REJECTED, "HTTP 401")),
+                        FileResult(
+                            f[0],
+                            null,
+                            UiError(
+                                SigningError.TIMESTAMP_REJECTED,
+                                "HTTP 401",
+                                "TIMESTAMP_REJECTED: HTTP 401\n" +
+                                    "Caused by: sh.yetkin.esigner.core.TsaResponseError: POST http://zd.kamusm.gov.tr -> HTTP 401\n" +
+                                    "Content-Type: text/plain, 12 bytes\nUnauthorized",
+                            ),
+                        ),
                         FileResult(f[1], null, skipped = true),
                         FileResult(f[2], null, skipped = true),
                         FileResult(f[3], null, skipped = true),
@@ -214,7 +268,7 @@ class ScreenshotTest {
             screen = Screen.WORKSPACE
             files.addAll(sampleFiles())
             settings.setForTest(SigningLevel.BASELINE_LT, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
-            settingsOpen = true
+            openSettings(SettingsSection.TIMESTAMP)
         }, dark = true)
         shot("dark-03-card-found", state(Language.EN) {
             scan = ScanState.Ready(CardScan(1, listOf(card)))
