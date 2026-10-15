@@ -13,5 +13,7 @@ class UpdatesTest {
         assertFalse(Updates.isNewer("0.4.1", "0.4.1"))
         assertFalse(Updates.isNewer("0.4.0", "0.4.1"))
         assertFalse(Updates.isNewer("0.4.1-rc1", "0.4.1"))
+        assertTrue(Updates.isNewer("0.5.0", "0.5.0-rc1"))
+        assertFalse(Updates.isNewer("0.5.0-rc2", "0.5.0-rc1"))
     }
 }

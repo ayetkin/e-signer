@@ -2,6 +2,7 @@ package sh.yetkin.esigner.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,15 +14,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
@@ -40,12 +45,17 @@ private const val DEVELOPER_URL = "https://github.com/ayetkin"
 /** App name, version, developer, license and the GitHub update check (Help menu and the app menu's About item). */
 @Composable
 fun AboutDialog(state: AppState) {
+    // Takes the focus from the screen underneath, so Escape reaches the dialog and keys do not reach hidden controls.
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.45f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-            .onPreviewKeyEvent { if (it.key == Key.Escape) { state.closeAbout(); true } else false },
+            .onPreviewKeyEvent { if (it.key == Key.Escape) { state.closeAbout(); true } else false }
+            .focusRequester(focus)
+            .focusable(),
         contentAlignment = Alignment.Center,
     ) {
         Panel(Modifier.padding(24.dp).widthIn(max = 440.dp).fillMaxWidth()) {
@@ -91,7 +101,7 @@ private fun UpdateRow(state: AppState) {
         }
         if (check == UpdateCheck.Checking) {
             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.padding(start = 8.dp))
+            Spacer(Modifier.width(8.dp))
         }
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.weight(1f))
         when (check) {

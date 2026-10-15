@@ -8,6 +8,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.5.0] - 2026-10-15
+
 ### Eklenenler
 
 - Mali mühür kartıyla imzalama: kartta geçerli bir e-imza sertifikası yoksa mali mühür sertifikası seçilir,
@@ -48,5 +50,6 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.4.1...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

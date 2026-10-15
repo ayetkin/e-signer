@@ -32,14 +32,19 @@ object Updates {
             .timeout(Duration.ofSeconds(10))
             .build()
         val response = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
-            .send(request, HttpResponse.BodyHandlers.ofString())
+            .use { it.send(request, HttpResponse.BodyHandlers.ofString()) }
+        // 404: no release published yet.
+        if (response.statusCode() == 404) return UpdateCheck.UpToDate
         if (response.statusCode() != 200) throw IOException("GitHub answered ${response.statusCode()}")
         val latest = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(response.body())?.groupValues?.get(1)
             ?: throw IOException("No tag_name in the GitHub answer")
         return if (isNewer(latest, current)) UpdateCheck.Available(latest) else UpdateCheck.UpToDate
     }
 
-    /** Numeric comparison of dotted versions ("0.10.0" > "0.9.3"); a suffix such as "-rc1" is ignored. */
+    /**
+     * Numeric comparison of dotted versions ("0.10.0" > "0.9.3"). With equal numbers a release is newer than a
+     * pre-release ("0.5.0" > "0.5.0-rc1"); two suffixes are not compared.
+     */
     fun isNewer(latest: String, current: String): Boolean {
         fun parts(v: String) = v.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
         val a = parts(latest)
@@ -48,6 +53,6 @@ object Updates {
             val d = a.getOrElse(i) { 0 } - b.getOrElse(i) { 0 }
             if (d != 0) return d > 0
         }
-        return false
+        return '-' !in latest && '-' in current
     }
 }

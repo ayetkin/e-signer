@@ -47,12 +47,12 @@ private fun runApp() = application {
     val state = remember { AppState(scope) }
     val windowState = remember { WindowState(size = SigningSettings.CARD_WINDOW_SIZE, position = WindowPosition(Alignment.Center)) }
     val onCardScreen = state.screen == Screen.CARD_SELECT
-    val rememberWorkspaceSize = {
-        // For WindowMode.LAST; a maximized window reports the screen size, not the one to restore.
-        if (!onCardScreen && windowState.placement == WindowPlacement.Floating) state.settings.rememberWindowSize(windowState.size)
-    }
     val quit = {
-        rememberWorkspaceSize()
+        // For WindowMode.LAST; a maximized window reports the screen size, not the one to restore. Reads the screen
+        // at call time: the macOS quit handler keeps the first composition's lambda.
+        if (state.screen != Screen.CARD_SELECT && windowState.placement == WindowPlacement.Floating) {
+            state.settings.rememberWindowSize(windowState.size)
+        }
         state.dispose()
     }
     LaunchedEffect(Unit) {
@@ -84,16 +84,21 @@ private fun runApp() = application {
         icon = AppIconPainter(),
         state = windowState,
     ) {
+        // Whether the card screen was shown on the effect's previous run; the app starts on it.
+        val wasOnCardScreen = remember { booleanArrayOf(true) }
         // Switching screens resizes the window; a changed window setting applies at once, not only on the next start.
         LaunchedEffect(onCardScreen, state.settings.windowMode) {
+            val screenChanged = wasOnCardScreen[0] != onCardScreen
+            wasOnCardScreen[0] = onCardScreen
             // Leaving the workspace: keep its size before the window shrinks to the card screen.
-            if (onCardScreen && windowState.size != SigningSettings.CARD_WINDOW_SIZE && windowState.placement == WindowPlacement.Floating) {
+            if (screenChanged && onCardScreen && windowState.placement == WindowPlacement.Floating) {
                 state.settings.rememberWindowSize(windowState.size)
             }
             window.minimumSize = if (onCardScreen) Dimension(560, 600) else Dimension(880, 620)
             val mode = state.settings.windowMode
             windowState.placement = if (!onCardScreen && mode == WindowMode.MAXIMIZED) WindowPlacement.Maximized else WindowPlacement.Floating
-            if (windowState.placement == WindowPlacement.Floating) {
+            // A mode change on the card screen, or to LAST in the workspace, keeps the current window.
+            if (windowState.placement == WindowPlacement.Floating && (screenChanged || (!onCardScreen && mode != WindowMode.LAST))) {
                 windowState.size = when {
                     onCardScreen -> SigningSettings.CARD_WINDOW_SIZE
                     mode == WindowMode.LAST -> state.settings.lastWindowSize

@@ -8,6 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-15
+
 ### Added
 
 - Signing with a fiscal seal (mali mühür) card: without a valid e-signature certificate on the card, the
@@ -49,5 +51,6 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

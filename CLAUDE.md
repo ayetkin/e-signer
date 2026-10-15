@@ -199,7 +199,7 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   (WiX 3 orada kurulu): jpackage app-image + `.msi` + `.zip` (`app/packaging/icon.ico`, icon.png'den üretildi);
   Linux `ubuntu-22.04` (deb bağımlılıkları buradan, 24.04 libasound2t64 ister): app-image + `.deb` + `.tar.gz`. **Windows ve Linux paketleri hiç test edilmedi.**
   Testler `ci.yml` çağrılarak paralel koşar, geçmezse release yayımlanmaz. Etiket `gradle.properties`
-  `appVersion` ile aynı olmalı. Release notları `tools/release-notes.sh` ile `CHANGELOG.md` (TR) ve
+  `appVersion` ile aynı olmalı. Release notları `tools/release-notes.sh` ile (başlıklar ve kurulum bağlantıları `tools/release-notes.md` şablonunda) `CHANGELOG.md` (TR) ve
   `CHANGELOG.en.md`'deki sürüm bölümünden gelir; bölüm yoksa workflow durur. Sürüm çıkarma adımları `CONTRIBUTING.md`.
 - Belgeler: ana `.md` dosyaları Türkçe, İngilizceleri `.en.md` (README, INSTALL, CONTRIBUTING, SECURITY, CHANGELOG).
   Kullanıcıya görünen her değişiklik iki changelog'da "Yayımlanmadı"/"Unreleased" altına yazılır.

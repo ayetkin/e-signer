@@ -306,7 +306,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     // Signature settings
 
     fun openSettings(section: SettingsSection = SettingsSection.GENERAL) {
-        if (flow != SignFlow.Idle) return
+        if (flow != SignFlow.Idle || aboutOpen) return
         settingsSection = section
         settingsOpen = true
     }
@@ -323,7 +323,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         internal set
 
     fun openAbout(checkUpdates: Boolean = false) {
-        if (flow is SignFlow.Signing || flow is SignFlow.Confirm) return
+        if (flow is SignFlow.Signing || flow is SignFlow.Confirm || settingsOpen) return
         aboutOpen = true
         if (checkUpdates) checkForUpdates()
     }
