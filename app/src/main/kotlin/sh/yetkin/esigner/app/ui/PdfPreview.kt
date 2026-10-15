@@ -119,7 +119,11 @@ fun PdfPreview(file: File, placement: StampPlacement?, modifier: Modifier) {
         }
     }
     val pdf = document?.getOrNull()
+    // The space the stamp needs whatever the signing time (default spot, fit check), and the box as drawn now.
     val size = placement?.let { p -> remember(p.stamp.label, p.stamp.image != null, p.stamp.height, p.signerName) { p.stamp.size(p.signerName) } }
+    val drawSize = placement?.let { p ->
+        remember(p.stamp.label, p.stamp.image != null, p.stamp.height, p.signerName) { p.stamp.size(p.signerName, Instant.now()) }
+    }
     // The default spot depends on the signatures already in the document.
     val defaultPosition by produceState<StampPosition?>(null, pdf, size) {
         value = if (pdf == null || size == null) null else withContext(Dispatchers.IO) {
@@ -276,7 +280,7 @@ fun PdfPreview(file: File, placement: StampPlacement?, modifier: Modifier) {
                     ) {
                         items(pdf.pages.size) { index ->
                             val stamp = if (placement != null && size != null && position?.page == index + 1) {
-                                StampOnPage(placement, size, position, fits)
+                                StampOnPage(placement, drawSize!!, position, fits)
                             } else {
                                 null
                             }

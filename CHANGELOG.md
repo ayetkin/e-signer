@@ -8,6 +8,11 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Düzeltilenler
+
+- Yalnızca yazılı görünür imzada yazının solunda ve sağında aynı boşluk kalır; kutu, imza zamanının gerçek
+  genişliğine ve DSS'in yazı ölçülerine göre hesaplanır.
+
 ## [0.5.1] - 2026-10-15
 
 ### Eklenenler

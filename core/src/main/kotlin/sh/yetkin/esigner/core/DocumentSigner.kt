@@ -137,7 +137,7 @@ class DocumentSigner(
                     text = it
                     font = VisibleStamp.dssFont()
                     textWrapping = TextWrapping.FILL_BOX
-                    signerTextPosition = SignerTextPosition.RIGHT
+                    signerTextPosition = if (stamp.image != null) SignerTextPosition.RIGHT else SignerTextPosition.LEFT
                     padding = stamp.padding
                 }
             }
@@ -147,7 +147,8 @@ class DocumentSigner(
                 (stampAt ?: defaultStampPosition(doc, width, height)).takeIf { stampFits(doc, it, width, height) }
                     ?: throw SigningException(SigningError.STAMP_POSITION_INVALID, input.name)
             } ?: throw SigningException(SigningError.FILE_UNSUPPORTED, input.name)
-            fieldParameters = field(position, width, height)
+            // The spot was checked for any signing time; the box itself is as wide as the text at this one.
+            fieldParameters = field(position, stamp.size(name, signingDate.toInstant()).first, height)
         }
 
     private fun field(position: StampPosition, width: Float, height: Float) = SignatureFieldParameters().apply {

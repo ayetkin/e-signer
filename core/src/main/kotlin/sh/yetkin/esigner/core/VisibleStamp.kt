@@ -2,9 +2,10 @@ package sh.yetkin.esigner.core
 
 import eu.europa.esig.dss.model.InMemoryDocument
 import eu.europa.esig.dss.pades.DSSFileFont
-import java.awt.Font
+import eu.europa.esig.dss.pdf.AnnotationBox
+import eu.europa.esig.dss.pdf.pdfbox.visible.nativedrawer.PdfBoxDSSFontMetrics
+import org.apache.pdfbox.pdmodel.font.PDType0Font
 import org.apache.pdfbox.pdmodel.PDDocument
-import java.awt.font.FontRenderContext
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -66,29 +67,28 @@ class VisibleStamp(val label: String?, val image: ByteArray?, val height: Float 
 
     /**
      * Width and height in points for [signerName]. The text part is as wide as its longest line at the font size
-     * that makes the lines fill the height, so DSS's FILL_BOX layout adds no space of its own.
+     * that makes the lines fill the height, so DSS's FILL_BOX layout adds no space of its own. Without a [time]
+     * the width fits any signing time (the space a stamp needs on the page); with it, the exact text at that time
+     * (the box as drawn, with the same margin on both sides).
      */
-    fun size(signerName: String): Pair<Float, Float> {
-        val textWidth = text(signerName, Instant.now())?.let(::fittedWidth) ?: 0f
+    fun size(signerName: String, time: Instant? = null): Pair<Float, Float> {
+        val textWidth = text(signerName, time ?: Instant.now())?.let { fittedWidth(it, anyTime = time == null) } ?: 0f
         return imageWidth + textWidth to height
     }
 
     /** Font size in points at which the label's lines fill the height, as DSS draws them. */
     fun fontSize(signerName: String): Float = text(signerName, Instant.now())?.let { SAMPLE_SIZE * fillScale(it) } ?: 0f
 
-    private fun fittedWidth(text: String): Float {
-        val sample = font.deriveFont(SAMPLE_SIZE)
-        val context = FontRenderContext(null, true, true)
-        // Every digit as the widest one, so the box fits the signing time whatever it turns out to be.
-        val widest = text.lines().maxOf { sample.getStringBounds(it.replace(DIGIT, widestDigit), context).width }.toFloat()
-        return widest * fillScale(text) + 2 * padding + height * RIGHT_RATIO
+    private fun fittedWidth(text: String, anyTime: Boolean): Float {
+        // For any time, every digit as the widest one, so the box fits the signing time whatever it turns out to be.
+        val widest = textBox(if (anyTime) text.replace(DIGIT, widestDigit) else text).width
+        // Next to an icon the right margin matches the icon's margin to the frame; text alone keeps the same
+        // padding on both sides.
+        return widest * fillScale(text) + 2 * padding + if (image != null) height * RIGHT_RATIO else 0f
     }
 
     /** How much the sample font size must grow for the lines to fill the height inside the padding. */
-    private fun fillScale(text: String): Float {
-        val lineHeight = font.deriveFont(SAMPLE_SIZE).getLineMetrics(text, FontRenderContext(null, true, true)).height
-        return (height - 2 * padding) / (lineHeight * text.lines().size)
-    }
+    private fun fillScale(text: String): Float = (height - 2 * padding) / textBox(text).height
 
     companion object {
         const val DEFAULT_HEIGHT = 35f
@@ -101,20 +101,22 @@ class VisibleStamp(val label: String?, val image: ByteArray?, val height: Float 
         private const val ICON_RATIO = 0.8f
         private const val GAP_RATIO = 0.12f
 
-        /** Extra space between the text and the right edge of the frame, as a fraction of the height. */
+        /** Extra space between the text and the right edge of the frame next to an icon, as a fraction of the height. */
         private const val RIGHT_RATIO = 0.08f
         private const val SAMPLE_SIZE = 10f
         private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
-        /** The text's font: Inter Regular (SIL Open Font License 1.1, fonts/Inter-LICENSE.txt), embedded in the PDF. */
-        private val font by lazy { Font.createFont(Font.TRUETYPE_FONT, ByteArrayInputStream(fontData)) }
+        /**
+         * DSS's own metrics for the stamp font (Inter Regular, SIL Open Font License 1.1, fonts/Inter-LICENSE.txt),
+         * the ones its FILL_BOX layout sizes the text with; Java's metrics for the same font differ by a third.
+         */
+        private val metrics by lazy { PdfBoxDSSFontMetrics(PDType0Font.load(PDDocument(), ByteArrayInputStream(fontData))) }
+
+        /** Lines of [text] at the sample size, in points. */
+        private fun textBox(text: String): AnnotationBox = synchronized(metrics) { metrics.computeTextBoundaryBox(text, SAMPLE_SIZE) }
 
         private val DIGIT = Regex("[0-9]")
-        private val widestDigit by lazy {
-            val sample = font.deriveFont(SAMPLE_SIZE)
-            val context = FontRenderContext(null, true, true)
-            ('0'..'9').maxBy { sample.getStringBounds(it.toString(), context).width }.toString()
-        }
+        private val widestDigit by lazy { ('0'..'9').maxBy { textBox(it.toString()).width }.toString() }
 
         /** That font's file, so a preview can draw the text exactly as the signed PDF will. */
         val fontData: ByteArray by lazy { VisibleStamp::class.java.getResourceAsStream("/fonts/Inter-Regular.ttf")!!.use { it.readBytes() } }

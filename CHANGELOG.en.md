@@ -8,6 +8,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Fixed
+
+- A text-only visible signature has the same space left and right of the text: the box follows the actual
+  signing time and DSS's own text metrics.
+
 ## [0.5.1] - 2026-10-15
 
 ### Added

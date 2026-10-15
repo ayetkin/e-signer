@@ -91,6 +91,29 @@ class DocumentSignerTest {
     }
 
     @Test
+    fun `text-only stamp has the same space left and right of the text`() {
+        val signed = DocumentSigner(stamp = VisibleStamp("Digitally signed by", null)).sign(pdf(), SignatureFormat.PADES, token, key)
+        PDDocument.load(signed).use { doc ->
+            val rect = doc.getPage(0).annotations.single().rectangle
+            val scale = 8f
+            val image = PDFRenderer(doc).renderImage(0, scale)
+            val pageHeight = doc.getPage(0).cropBox.height
+            val left = (rect.lowerLeftX * scale).toInt()
+            val right = (rect.upperRightX * scale).toInt()
+            val top = ((pageHeight - rect.upperRightY) * scale).toInt()
+            val bottom = ((pageHeight - rect.lowerLeftY) * scale).toInt()
+            // Columns with dark text pixels, ignoring a frame line at the very edge.
+            val ink = (left + 4 until right - 4).filter { x -> (top + 4 until bottom - 4).any { y -> image.getRGB(x, y) and 0xFF < 128 } }
+            // For a visual check of the margins.
+            File("build/stamp").mkdirs()
+            ImageIO.write(image.getSubimage(left - 8, top - 8, right - left + 16, bottom - top + 16), "png", File("build/stamp/text-only.png"))
+            val leftGap = (ink.first() - left) / scale
+            val rightGap = (right - ink.last()) / scale
+            assertEquals(leftGap, rightGap, 1f, "left $leftGap pt, right $rightGap pt")
+        }
+    }
+
+    @Test
     fun `visible stamp goes where the user chose, never over another signature`() {
         val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", null))
         val chosen = StampPosition(page = 1, x = 100f, y = 200f)
