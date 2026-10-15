@@ -1,78 +1,90 @@
 # E-Signer
 
-[Türkçe](README.tr.md)
+[English](README.en.md)
 
-A desktop app for signing PDFs and other files with Turkish qualified electronic signature cards,
-and for verifying signed files. It runs on macOS (Apple silicon and Intel), Windows and Linux.
+Türkiye'deki nitelikli elektronik imza kartlarıyla PDF ve diğer dosyaları imzalayan, imzalı
+dosyaları doğrulayan masaüstü uygulaması. macOS (Apple silicon ve Intel) için geliştirilip test ediliyor;
+Windows ve Linux paketleri de üretiliyor ancak henüz test edilmedi.
 
-![Signing screen](docs/screenshots/sign.png)
+![İmzalama ekranı](docs/screenshots/sign.png)
 
-## Features
+## Özellikler
 
-- **Sign with a smart card** over PKCS#11. Tested with AKİS cards; the card is detected without a PIN,
-  and the PIN is asked once per signing run and never retried automatically.
-- **PAdES** signatures inside PDFs (existing signatures stay valid) and **CAdES** `.imz` files for any
-  other file type.
-- **Signature levels:** B-B, B-T with an RFC 3161 time-stamp (including the Kamu SM time-stamp
-  authentication), and B-LT with the certificate chains and OCSP/CRL responses embedded.
-- **Visible signatures** on PDFs: pick the spot and size in the preview, or let the app find a free one.
-- **Review before signing:** a PDF preview and a confirmation that lists what is signed with which certificate.
-- **Verify** PAdES and CAdES signatures without a card, against the bundled roots of the Turkish
-  qualified trust service providers, including the Law 5070 qualified certificate check and fiscal seals.
-- Turkish and English user interface.
+- **Akıllı kartla imza** (PKCS#11). AKİS kartlarla denendi; mali mühür kartları da destekleniyor. Kart PIN girmeden algılanır; PIN her imza
+  turunda bir kez sorulur ve hiçbir zaman otomatik olarak yeniden denenmez.
+- PDF'lerin içine **PAdES** imza (önceki imzalar geçerliliğini korur), diğer her dosya için **CAdES** `.imz`.
+- **İmza seviyeleri:** B-B, RFC 3161 zaman damgalı B-T (Kamu SM kimlik doğrulaması dahil) ve sertifika
+  zincirleri ile OCSP/CRL yanıtlarının gömüldüğü B-LT.
+- PDF'lerde **görünür imza**: yerini ve boyutunu önizlemede seçin ya da uygulama boş bir yer bulsun.
+- **İmzadan önce inceleme:** PDF önizlemesi ve neyin hangi sertifikayla imzalanacağını gösteren onay penceresi.
+- Kart olmadan PAdES ve CAdES imzalarını **doğrulama**: Türkiye'deki nitelikli elektronik sertifika
+  hizmet sağlayıcılarının gömülü kök sertifikalarıyla, 5070 sayılı Kanun'a göre nitelikli sertifika ve
+  mali mühür kontrolüyle.
+- Türkçe ve İngilizce arayüz.
 
-| Confirmation | Verification |
+| Onay | Doğrulama |
 | --- | --- |
-| ![Confirmation](docs/screenshots/confirm.png) | ![Verification](docs/screenshots/verify.png) |
+| ![Onay](docs/screenshots/confirm.png) | ![Doğrulama](docs/screenshots/verify.png) |
 
-## Download
+## İndirme
 
-macOS disk images for Apple silicon and Intel are on the [releases page](https://github.com/ayetkin/e-signer/releases).
-See [INSTALL.md](INSTALL.md) for what you need (card driver, reader) and how to open the app the first time.
+Paketler [sürümler sayfasında](https://github.com/ayetkin/e-signer/releases):
 
-## Status
+| Sistem | Paket | Durum |
+| --- | --- | --- |
+| macOS, Apple silicon | `E-Signer-<sürüm>-macos-arm64.dmg` | Test edildi |
+| macOS, Intel | `E-Signer-<sürüm>-macos-x64.dmg` | Test edildi |
+| Windows x64 | `.msi` kurulum ya da `.zip` | **Test edilmedi** |
+| Linux x64 | `.deb` ya da `.tar.gz` | **Test edilmedi** |
 
-Under active development. Signing and card detection are tested with real AKİS cards on macOS;
-Windows and time-stamping against production authorities still need wider testing. Windows and
-Linux packages are not published yet; there the app is built from source.
+Java uygulamanın içinde gelir, ayrıca kurmanız gerekmez. Gerekenler (kart sürücüsü, okuyucu) ve
+uygulamanın ilk açılışı için [INSTALL.md](INSTALL.md) dosyasına bakın. Değişiklikler
+[CHANGELOG.md](CHANGELOG.md) dosyasında.
 
-> **Disclaimer.** E-Signer is not a certified product. A signature is qualified because of the
-> qualified certificate and the key on your card, not because of this software. Check the signed
-> files with the tools your counterparties rely on before using it for anything important.
-> The software is provided without any warranty (see [LICENSE](LICENSE)).
+## Durum
 
-## Building and running
+Geliştirme sürüyor. İmzalama ve kart algılama macOS'ta gerçek AKİS kartlarla denendi. **Windows ve
+Linux'ta hiç test edilmedi:** paketler otomatik olarak üretiliyor ama uygulamanın bu sistemlerde açıldığı,
+kartı algıladığı ya da imza attığı doğrulanmadı. Gerçek zaman damgası sunucuları ve mali mühür kartlarıyla
+kullanım da daha geniş test gerektiriyor. Bu sistemlerde deneyip sonucu
+[bildirirseniz](https://github.com/ayetkin/e-signer/issues) çok yardımcı olur.
 
-Requirements: JDK 21 and the PKCS#11 driver of your card (for AKİS: `libakisp11.dylib` on macOS,
-`akisp11.dll` on Windows, `libakisp11.so` on Linux). The driver path can be changed in
-Settings > Card.
+> **Sorumluluk reddi.** E-Signer sertifikalı bir ürün değildir. İmzayı nitelikli yapan bu yazılım
+> değil, kartınızdaki nitelikli sertifika ve anahtardır. Önemli işlerde kullanmadan önce imzalı
+> dosyaları karşı tarafın güvendiği araçlarla kontrol edin. Yazılım hiçbir garanti olmaksızın
+> sunulur (bkz. [LICENSE](LICENSE)).
+
+## Derleme ve çalıştırma
+
+Gerekenler: JDK 21 ve kartınızın PKCS#11 sürücüsü (AKİS için macOS'ta `libakisp11.dylib`, Windows'ta
+`akisp11.dll`, Linux'ta `libakisp11.so`). Sürücü yolu Ayarlar > Kart'tan değiştirilebilir.
 
 ```sh
-./gradlew :core:test          # core tests, no card needed
-./gradlew :app:run            # start the app
+./gradlew :core:test          # core testleri, kart gerekmez
+./gradlew :app:run            # uygulamayı başlatır
 ```
 
-The tests use software keys and a local time-stamp server, so they need neither a card nor a network.
-`./gradlew :app:test` also renders every screen to `app/build/screenshots`.
+Testler yazılım anahtarı ve yerel bir zaman damgası sunucusu kullanır; kart da ağ da gerekmez.
+`./gradlew :app:test` ayrıca tüm ekranları `app/build/screenshots` altına çizer.
 
-The repository also has a `Makefile` for building inside Linux containers (Apple `container`),
-which packages a self-contained runtime under `dist/`.
+Depoda Linux container içinde (Apple `container`) derleme için bir `Makefile` de var; bu yol `dist/`
+altına kendi Java çalışma ortamıyla birlikte bir paket üretir.
 
-## Project layout
+## Proje yapısı
 
-- `core/` signing, time-stamping and verification, independent of the UI (EU DSS 6.1).
-- `app/` the Compose Multiplatform desktop app.
-- `tools/` packaging and screenshot helpers.
+- `core/` arayüzden bağımsız imzalama, zaman damgası ve doğrulama (EU DSS 6.1).
+- `app/` Compose Multiplatform masaüstü uygulaması.
+- `tools/` paketleme ve ekran görüntüsü araçları.
 
-## Security
+## Güvenlik
 
-Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
+Güvenlik açıklarını lütfen gizli olarak bildirin; bkz. [SECURITY.md](SECURITY.md).
 
-## Contributing
+## Katkı
 
-Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+Hata kayıtları ve pull request'ler memnuniyetle karşılanır; bkz. [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## License
+## Lisans
 
-E-Signer is licensed under the [GNU Affero General Public License v3.0](LICENSE). Third-party
-components keep their own licenses; see [NOTICE](NOTICE).
+E-Signer [GNU Affero Genel Kamu Lisansı v3.0](LICENSE) ile lisanslanmıştır. Üçüncü taraf bileşenler
+kendi lisanslarını korur; bkz. [NOTICE](NOTICE).

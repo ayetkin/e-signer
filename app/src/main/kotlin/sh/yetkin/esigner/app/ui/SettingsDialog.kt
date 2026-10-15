@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -56,11 +57,13 @@ import androidx.compose.ui.unit.dp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.ScanState
 import sh.yetkin.esigner.app.SettingsSection
+import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.SigningSettings
 import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.core.VisibleStamp
 import kotlin.math.roundToInt
 import sh.yetkin.esigner.app.TsaAuthType
+import sh.yetkin.esigner.app.Updates
 import sh.yetkin.esigner.app.WindowMode
 import sh.yetkin.esigner.app.i18n.Language
 import sh.yetkin.esigner.app.i18n.str
@@ -120,7 +123,7 @@ fun SettingsDialog(state: AppState) {
             .onPreviewKeyEvent { if (it.key == Key.Escape) { close(); true } else false },
         contentAlignment = Alignment.Center,
     ) {
-        Panel(Modifier.padding(24.dp).width(780.dp).heightIn(max = 600.dp), padding = PaddingValues(0.dp)) {
+        Panel(Modifier.padding(24.dp).widthIn(max = 780.dp).fillMaxWidth().heightIn(max = 600.dp), padding = PaddingValues(0.dp)) {
             Row(Modifier.weight(1f, fill = false).heightIn(min = 420.dp)) {
                 Column(
                     Modifier.width(200.dp).fillMaxHeight().background(LocalExtraColors.current.sidebar).padding(10.dp),
@@ -159,7 +162,7 @@ fun SettingsDialog(state: AppState) {
                                     // The AGPL asks interactive programs to show the license and the absence of warranty.
                                     Group(str("settings.about")) {
                                         Hint(str("settings.about.license"))
-                                        TextButton(onClick = { openLink(SOURCE_URL) }) { Text(str("settings.about.source")) }
+                                        TextButton(onClick = { openLink(Updates.REPOSITORY_URL) }) { Text(str("settings.about.source")) }
                                     }
                                 }
                                 SettingsSection.SIGNATURE -> {
@@ -290,11 +293,6 @@ fun SettingsDialog(state: AppState) {
     }
 }
 
-private const val SOURCE_URL = "https://github.com/ayetkin/e-signer"
-
-private fun openLink(url: String) {
-    runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI(url)) }
-}
 
 private fun sectionIcon(section: SettingsSection): ImageVector = when (section) {
     SettingsSection.GENERAL -> Icons.Outlined.Settings
@@ -416,9 +414,14 @@ private fun Detail(label: String, value: String) {
 
 /** Gear button that opens the settings; for screens without the sidebar. */
 @Composable
-fun SettingsButton(state: AppState) {
-    IconButton(onClick = { state.openSettings() }) {
-        Icon(Icons.Outlined.Settings, contentDescription = str("settings.title"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+fun SettingsButton(state: AppState, modifier: Modifier = Modifier) {
+    IconButton(onClick = { state.openSettings() }, modifier = modifier, enabled = state.flow == SignFlow.Idle) {
+        Icon(
+            Icons.Outlined.Settings,
+            contentDescription = str("settings.title"),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

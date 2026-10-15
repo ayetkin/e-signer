@@ -161,6 +161,9 @@ class SigningSettings(private val persist: Boolean = true) {
         const val KAMU_SM_URL = "http://zd.kamusm.gov.tr"
         val DEFAULT_WINDOW_SIZE = DpSize(1120.dp, 760.dp)
 
+        /** The card screen is a small centered window; the workspace gets the size chosen above. */
+        val CARD_WINDOW_SIZE = DpSize(720.dp, 720.dp)
+
         private const val LEVEL = "signingLevel"
         private const val URL = "tsaUrl"
         private const val AUTH = "tsaAuth"

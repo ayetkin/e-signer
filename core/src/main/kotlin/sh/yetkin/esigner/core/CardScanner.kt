@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.time.Instant
 
 enum class PinStatus {
     OK,
@@ -17,7 +16,7 @@ enum class PinStatus {
     LOCKED,
 }
 
-/** A card found without logging in. [holder] comes from the card's public signing certificate, if readable. */
+/** A card found without logging in. [holder] is the card's public signing or fiscal seal certificate, if readable. */
 data class DetectedCard(
     val slotId: Long,
     val readerName: String,
@@ -52,10 +51,7 @@ object CardScanner {
         val certificates = raw.certificates().mapNotNull { bytes ->
             runCatching { factory.generateCertificate(ByteArrayInputStream(bytes)) as X509Certificate }.getOrNull()
         }.map(CertificateInfo::from)
-        val now = Instant.now()
-        val holder = certificates.firstOrNull { it.isSigningCertificate && it.isValidAt(now) }
-            ?: certificates.firstOrNull { it.isSigningCertificate }
-            ?: certificates.firstOrNull()
+        val holder = certificates.getOrNull(CertificateInfo.preferredSigner(certificates)) ?: certificates.firstOrNull()
         return DetectedCard(
             slotId = raw.slotId(),
             readerName = raw.readerName(),

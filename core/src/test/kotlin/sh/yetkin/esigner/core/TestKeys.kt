@@ -59,7 +59,11 @@ object TestKeys {
             subject, BigInteger.valueOf(if (fiscalSeal) 3L else if (qualified) 2L else 1L),
             Date.from(now.minus(1, ChronoUnit.DAYS)), Date.from(now.plus(365, ChronoUnit.DAYS)),
             subject, keyPair.public,
-        ).addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.nonRepudiation or KeyUsage.digitalSignature))
+        // Kamu SM fiscal seals carry no nonRepudiation.
+        ).addExtension(
+            Extension.keyUsage, true,
+            KeyUsage(if (fiscalSeal) KeyUsage.digitalSignature else KeyUsage.nonRepudiation or KeyUsage.digitalSignature),
+        )
         if (fiscalSeal) {
             builder.addExtension(
                 Extension.certificatePolicies, false,

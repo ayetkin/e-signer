@@ -107,7 +107,7 @@ fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> 
                                 preview == null -> list(Modifier.fillMaxSize())
                                 // Side by side when there is room, otherwise the preview goes under the list.
                                 maxWidth >= SIDE_BY_SIDE_MIN_WIDTH -> Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    list(Modifier.weight(2f).fillMaxHeight())
+                                    list(Modifier.weight(1.5f).fillMaxHeight())
                                     key(preview) { PdfPreview(preview, stampPlacement(state, preview), Modifier.weight(3f).fillMaxHeight()) }
                                 }
                                 else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -181,6 +181,7 @@ private fun FileList(
                     )
                     if (editable) {
                         TextButton(onClick = state::clearFiles) { Text(str("files.clear")) }
+                        Spacer(Modifier.width(8.dp))
                         OutlinedButton(onClick = pickFiles) {
                             Icon(Icons.Default.Add, contentDescription = str("files.add"), modifier = Modifier.size(18.dp))
                             if (!compact) Text(str("files.add"), modifier = Modifier.padding(start = 6.dp))
@@ -312,12 +313,13 @@ private fun BottomBar(state: AppState) {
             Button(
                 onClick = state::requestSign,
                 enabled = state.canSign,
-                modifier = Modifier.height(36.dp),
+                modifier = Modifier.height(40.dp),
             ) {
+                Icon(AppIcons.DrawFilled, contentDescription = null, modifier = Modifier.padding(start = 4.dp).size(18.dp))
                 Text(
                     if (count == 0) str("sign.button") else str("sign.buttonCount", count),
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    modifier = Modifier.padding(start = 8.dp, end = 12.dp),
                 )
             }
         }

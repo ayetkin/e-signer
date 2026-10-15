@@ -1,0 +1,149 @@
+name: Release
+
+# A version tag (v0.4.2) builds the packages for every platform and publishes them on a GitHub release,
+# with the notes taken from CHANGELOG.md and CHANGELOG.en.md. Run it by hand to only build them; the
+# packages are then attached to the run as artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (empty: appVersion in gradle.properties)'
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  # Same tests as CI, in parallel with packaging; nothing is published unless they pass.
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos, runner: macos-15, arch: arm64, compose: macos-arm64 }
+          - { os: macos, runner: macos-15-intel, arch: x64, compose: macos-x64 }
+          # WiX 3 (needed by jpackage for the .msi) is preinstalled on windows-2022, not on windows-2025.
+          - { os: windows, runner: windows-2022, arch: x64, compose: windows-x64 }
+          - { os: linux, runner: ubuntu-24.04, arch: x64, compose: linux-x64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Releases run on tags, where the action only reads the cache by default; macOS and Windows runners
+          # have no other job that would fill it.
+          cache-read-only: false
+
+      - name: Version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; fi
+          declared="$(sed -n 's/^appVersion=//p' gradle.properties | tr -d '\r')"
+          [ -n "$v" ] || v="$declared"
+          # A tag must match the committed version, or local builds and the release would disagree.
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "$v" != "$declared" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match appVersion=$declared in gradle.properties"; exit 1
+          fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: ./gradlew --no-daemon -PcomposeTarget=${{ matrix.compose }} -PappVersion="$VERSION" :app:installDist
+
+      # A trimmed Java runtime goes inside the app, so users need no Java of their own.
+      - name: Java runtime
+        run: |
+          mkdir -p build/package
+          cp -R app/build/install/app/lib build/package/lib
+          "$JAVA_HOME/bin/jlink" --module-path "$JAVA_HOME/jmods" --add-modules ALL-MODULE-PATH \
+            --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
+            --output build/package/runtime
+
+      - name: macOS disk image
+        if: matrix.os == 'macos'
+        run: |
+          DIST=build/package JPACKAGE="$JAVA_HOME/bin/jpackage" TYPE=dmg OUT=build/out tools/package-mac.sh
+          mkdir -p build/dist
+          mv "build/out/E-Signer-$VERSION.dmg" "build/dist/E-Signer-$VERSION-macos-${{ matrix.arch }}.dmg"
+
+      # Same launcher options as tools/package-mac.sh, without the macOS-only trackpad export.
+      - name: Windows and Linux app image
+        if: matrix.os != 'macos'
+        run: |
+          icon=app/packaging/icon.png
+          [ "${{ matrix.os }}" = windows ] && icon=app/packaging/icon.ico
+          "$JAVA_HOME/bin/jpackage" \
+            --type app-image \
+            --name E-Signer \
+            --app-version "$VERSION" \
+            --vendor "Ali Yetkin" \
+            --copyright "Copyright (C) 2026 Ali Yetkin. Licensed under the AGPL-3.0." \
+            --icon "$icon" \
+            --input build/package/lib \
+            --main-jar app.jar \
+            --main-class sh.yetkin.esigner.app.MainKt \
+            --runtime-image build/package/runtime \
+            --java-options "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn" \
+            --java-options "--add-modules=jdk.crypto.cryptoki" \
+            --java-options "--add-exports=jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED" \
+            --dest build/out
+
+      - name: Windows installer and zip
+        if: matrix.os == 'windows'
+        run: |
+          mkdir -p build/dist
+          "$JAVA_HOME/bin/jpackage" --type msi --app-image build/out/E-Signer --name E-Signer --app-version "$VERSION" \
+            --vendor "Ali Yetkin" --win-menu --win-shortcut --win-dir-chooser \
+            --win-upgrade-uuid 2d91fa4a-9028-491f-a0c1-e00f0ea5a843 --dest build/out
+          mv build/out/E-Signer-*.msi "build/dist/E-Signer-$VERSION-windows-x64.msi"
+          (cd build/out && 7z a -tzip -bso0 "../dist/E-Signer-$VERSION-windows-x64.zip" E-Signer)
+
+      - name: Linux package and archive
+        if: matrix.os == 'linux'
+        run: |
+          mkdir -p build/dist
+          "$JAVA_HOME/bin/jpackage" --type deb --app-image build/out/E-Signer --name E-Signer --icon app/packaging/icon.png --app-version "$VERSION" \
+            --vendor "Ali Yetkin" --linux-shortcut --linux-menu-group Office --linux-app-category office \
+            --linux-package-name e-signer --dest build/out
+          mv build/out/e-signer_*.deb "build/dist/E-Signer-$VERSION-linux-x64.deb"
+          tar -C build/out -czf "build/dist/E-Signer-$VERSION-linux-x64.tar.gz" E-Signer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: E-Signer-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/dist/*
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [test, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Notes
+        run: tools/release-notes.sh "${GITHUB_REF_NAME#v}" > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "E-Signer ${GITHUB_REF_NAME#v}" --notes-file notes.md

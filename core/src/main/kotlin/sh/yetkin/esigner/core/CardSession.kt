@@ -5,7 +5,6 @@ import eu.europa.esig.dss.token.PasswordInputCallback
 import eu.europa.esig.dss.token.Pkcs11SignatureToken
 import eu.europa.esig.dss.token.SignatureTokenConnection
 import java.io.File
-import java.time.Instant
 
 data class SignerKey(val entry: DSSPrivateKeyEntry, val info: CertificateInfo)
 
@@ -34,10 +33,9 @@ class CardSession private constructor(
 
     val connection: SignatureTokenConnection get() = token
 
-    /** First valid signing (nonRepudiation) key, otherwise the first key. */
+    /** See [CertificateInfo.preferredSigner]; the first key when no key qualifies. */
     val preferredKeyIndex: Int
-        get() = keys.indexOfFirst { it.info.isSigningCertificate && it.info.isValidAt(Instant.now()) }
-            .takeIf { it >= 0 } ?: 0
+        get() = CertificateInfo.preferredSigner(keys.map { it.info }).coerceAtLeast(0)
 
     override fun close() {
         try {

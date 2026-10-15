@@ -122,6 +122,20 @@ class DocumentSignerTest {
     }
 
     @Test
+    fun `a fiscal seal signs pdf and other files`() {
+        TestKeys.sealToken().use { seal ->
+            val sealKey = seal.keys.single()
+            val pdf = signer.sign(pdf(), SignatureFormat.PADES, seal, sealKey)
+            assertEquals(1, signatureCount(pdf))
+
+            val input = File(dir, "invoice.xml").apply { writeText("<invoice/>") }
+            val cms = CMSSignedData(signer.sign(input, SignatureFormat.CADES, seal, sealKey).readBytes())
+            assertTrue(cms.signerInfos.signers.single().verify(JcaSimpleSignerInfoVerifierBuilder().build(TestKeys.sealCertificate)))
+            assertContentEquals(input.readBytes(), cms.signedContent.content as ByteArray)
+        }
+    }
+
+    @Test
     fun `never overwrites an existing output`() {
         val input = pdf()
         val existing = outputFileFor(input, SignatureFormat.PADES).apply { writeText("old") }

@@ -22,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -67,7 +66,7 @@ fun AppShell(state: AppState, content: @Composable ColumnScope.() -> Unit) {
 
 /**
  * Flat layout, one row per item: navigation on top, signature options under it (sign tab only),
- * and the chosen card plus the settings entry at the bottom, like an account switcher.
+ * and the chosen card at the bottom, like an account switcher. Settings open from the gear next to the app name.
  */
 @Composable
 private fun Sidebar(state: AppState) {
@@ -89,8 +88,9 @@ private fun Sidebar(state: AppState) {
                     str("app.name"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier.padding(start = 12.dp).weight(1f),
                 )
+                SettingsButton(state, Modifier.size(32.dp))
             }
             NavItem(AppIcons.DrawOutlined, AppIcons.DrawFilled, str("tab.sign"), state.tab == Tab.SIGN, enabled = !busy) {
                 state.selectTab(Tab.SIGN)
@@ -118,9 +118,6 @@ private fun Sidebar(state: AppState) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Caption(str("sidebar.card"), top = 8.dp)
             CardRow(state)
-            NavItem(Icons.Outlined.Settings, Icons.Outlined.Settings, str("settings.title"), selected = false, enabled = state.flow == SignFlow.Idle) {
-                state.openSettings()
-            }
         }
     }
 }
@@ -301,7 +298,11 @@ private fun CardRow(state: AppState) {
                 holder?.isValidAt(Instant.now()) == false -> Triple(str("certificate.notValid"), colors.error, colors.error)
                 card.pinStatus == PinStatus.FINAL_TRY -> Triple(str("pin.finalTry"), colors.error, colors.error)
                 card.pinStatus == PinStatus.COUNT_LOW -> Triple(str("pin.countLow"), extra.warning, extra.warning)
-                else -> Triple(holder?.let { str("card.expires", formatDate(it.notAfter)) }, colors.tertiary, colors.onSurfaceVariant)
+                else -> Triple(
+                    holder?.let { str(if (it.isFiscalSeal) "card.fiscalSealExpires" else "card.expires", formatDate(it.notAfter)) },
+                    colors.tertiary,
+                    colors.onSurfaceVariant,
+                )
             }
             Box {
                 Avatar(name, 40.dp)

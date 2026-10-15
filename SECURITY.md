@@ -1,33 +1,35 @@
-# Security policy
+# Güvenlik politikası
 
-E-Signer handles smart card PINs and creates legally binding signatures, so security reports are
-taken seriously.
+[English](SECURITY.en.md)
 
-## Reporting a vulnerability
+E-Signer akıllı kart PIN'leriyle çalışır ve hukuki geçerliliği olan imzalar üretir; bu yüzden güvenlik
+bildirimleri ciddiye alınır.
 
-Please do not open a public issue. Use GitHub's private vulnerability reporting
-("Report a vulnerability" under the repository's Security tab) and include:
+## Güvenlik açığı bildirme
 
-- what is affected and how it can be exploited,
-- the steps or files to reproduce it,
-- the version or commit you tested.
+Lütfen herkese açık bir kayıt açmayın. GitHub'ın gizli güvenlik açığı bildirimini kullanın (deponun
+Security sekmesinde "Report a vulnerability") ve şunları ekleyin:
 
-You should get an answer within a week. Please keep the details private until a fix is released.
+- neyin etkilendiği ve nasıl istismar edilebileceği,
+- yeniden üretmek için adımlar ya da dosyalar,
+- denediğiniz sürüm ya da commit.
 
-## Design rules
+Bir hafta içinde yanıt almanız beklenir. Düzeltme yayımlanana kadar ayrıntıları gizli tutun.
 
-These rules are part of the design; a change that breaks one is treated as a vulnerability.
+## Tasarım kuralları
 
-- A PIN is never retried automatically, so a wrong PIN cannot use up the card's attempts.
-- PINs and time-stamp passwords are kept in memory only, never logged or written to disk, and are
-  zeroed after use.
-- Personal data from certificates (national ID numbers, e-mail addresses) is not logged; national
-  ID numbers are shown masked.
-- The user sees and confirms what is signed before the card is used.
-- Signed output never overwrites an existing file.
+Bu kurallar tasarımın parçasıdır; birini bozan değişiklik güvenlik açığı sayılır.
 
-## Scope
+- PIN asla otomatik olarak yeniden denenmez; yanlış PIN kartın deneme hakkını tüketemez.
+- PIN'ler ve zaman damgası parolaları yalnızca bellekte tutulur, loglanmaz, diske yazılmaz ve
+  kullanımdan sonra sıfırlanır.
+- Sertifikalardaki kişisel veriler (TC kimlik numarası, e-posta adresi) loglanmaz; TC kimlik
+  numaraları maskeli gösterilir.
+- Kullanıcı, kart kullanılmadan önce neyin imzalanacağını görür ve onaylar.
+- İmzalı çıktı hiçbir zaman var olan bir dosyanın üzerine yazılmaz.
 
-Only the latest commit on the default branch is supported. Vulnerabilities in the card driver, the
-card itself, EU DSS or other dependencies should go to their maintainers; tell us if E-Signer uses
-them in an unsafe way.
+## Kapsam
+
+Yalnızca varsayılan daldaki son commit desteklenir. Kart sürücüsündeki, kartın kendisindeki, EU DSS'teki
+ya da diğer bağımlılıklardaki açıkları kendi geliştiricilerine bildirin; E-Signer bunları güvensiz bir
+şekilde kullanıyorsa bize haber verin.

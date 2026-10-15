@@ -48,6 +48,18 @@ class ScreenshotTest {
     )
     private val card = DetectedCard(1, "ACS ACR39U ICC Reader", "AKIS", "AKIS v2.6", PinStatus.OK, holder)
 
+    /** A company's fiscal seal card: tax id, no nonRepudiation. */
+    private val sealCard = card.copy(
+        label = "MALI MUHUR",
+        holder = holder.copy(
+            commonName = "SAMPLE COMPANY INC",
+            maskedNationalId = "12******90",
+            idType = IdType.TAX_ID,
+            isSigningCertificate = false,
+            isFiscalSeal = true,
+        ),
+    )
+
     private fun sampleFiles() = listOf(
         "Service Agreement 2026.pdf" to 482_000,
         "Board decision.pdf" to 131_000,
@@ -135,8 +147,12 @@ class ScreenshotTest {
         }
 
     @OptIn(ExperimentalComposeUiApi::class)
-    // A 14-inch MacBook Pro window by default: 1512 x 982 points at 2x (Retina), so 3024 x 1964 pixels.
-    private fun shot(name: String, state: AppState, dark: Boolean = false, width: Int = 1512, height: Int = 982) {
+    // A maximized 14-inch MacBook Pro window by default: 1512 x 982 points at 2x (Retina), so 3024 x 1964 pixels.
+    // The card screen has its own smaller window, as in the app.
+    private fun shot(name: String, state: AppState, dark: Boolean = false, width: Int? = null, height: Int? = null) {
+        val card = state.screen == Screen.CARD_SELECT
+        val width = width ?: if (card) SigningSettings.CARD_WINDOW_SIZE.width.value.toInt() else 1512
+        val height = height ?: if (card) SigningSettings.CARD_WINDOW_SIZE.height.value.toInt() else 982
         val scene = ImageComposeScene(width = width * 2, height = height * 2, density = Density(2f)) {
             AppTheme(dark = dark) { App(state, pickFiles = {}) }
         }
@@ -174,6 +190,21 @@ class ScreenshotTest {
                 selectedSlot = 1
                 screen = Screen.WORKSPACE
             }
+            shot("$l-03b-card-fiscal-seal", state(lang) {
+                scan = ScanState.Ready(CardScan(1, listOf(sealCard)))
+                selectedSlot = 1
+            })
+            shot("$l-12b-dialog-fiscal-seal", state(lang) {
+                ready()
+                scan = ScanState.Ready(CardScan(1, listOf(sealCard)))
+                files.addAll(sampleFiles())
+                flow = SignFlow.Confirm()
+            })
+            shot("$l-18d-settings-card-fiscal-seal", state(lang) {
+                ready()
+                scan = ScanState.Ready(CardScan(1, listOf(sealCard)))
+                openSettings(SettingsSection.CARD)
+            })
             shot("$l-10-workspace-empty", state(lang, ready))
             shot("$l-11-workspace-files", state(lang) { ready(); files.addAll(sampleFiles()) })
             shot("$l-11b-workspace-stamp", state(lang) {
@@ -220,6 +251,9 @@ class ScreenshotTest {
             shot("$l-18-settings-signature", state(lang) { ready(); files.addAll(sampleFiles()); openSettings(SettingsSection.SIGNATURE) })
             shot("$l-18b-settings-general", state(lang) { ready(); openSettings() })
             shot("$l-18c-settings-card", state(lang) { ready(); openSettings(SettingsSection.CARD) })
+            shot("$l-18e-settings-on-card-screen", state(lang) { openSettings(SettingsSection.CARD) })
+            shot("$l-22-about", state(lang) { ready(); openAbout() })
+            shot("$l-22b-about-update", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Available("0.5.0") })
             shot("$l-19-workspace-tsa-missing", state(lang) {
                 ready()
                 files.addAll(sampleFiles())

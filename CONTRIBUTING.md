@@ -1,31 +1,51 @@
-# Contributing
+# Katkı
 
-Thanks for your interest in E-Signer. Issues, ideas and pull requests are welcome.
+[English](CONTRIBUTING.en.md)
 
-## Before you start
+E-Signer'a ilginiz için teşekkürler. Hata kayıtları, fikirler ve pull request'ler memnuniyetle karşılanır.
 
-For anything larger than a small fix, open an issue first so we can agree on the approach.
+## Başlamadan önce
 
-## Development
+Küçük bir düzeltmeden büyük işler için önce bir kayıt açın; yaklaşım üzerinde birlikte anlaşalım.
 
-- JDK 21. Run `./gradlew :core:test` for the core tests and `./gradlew :app:test` for the UI tests,
-  which also render every screen to `app/build/screenshots`. Look at the screenshots after UI changes.
-- Tests must not need a card or the network: use `TestKeys` (software keys) and `LocalPki`
-  (a local time-stamp server and CRL) in `core/src/test`.
-- Code, comments, identifiers and test data are in English. All user-facing text lives in
-  `app/src/main/resources/i18n/strings_{en,tr}.properties`, in both languages; `StringsTest`
-  checks that the two files have the same keys. `core` returns error codes, never UI text.
-- Keep `core` independent of the UI.
-- Follow the rules in [SECURITY.md](SECURITY.md#design-rules): never retry a PIN, never log or store
-  PINs, passwords or personal data, and never put real personal data in tests, logs or commits.
+## Geliştirme
 
-## Pull requests
+- JDK 21. Core testleri için `./gradlew :core:test`, arayüz testleri için `./gradlew :app:test`
+  çalıştırın; arayüz testleri tüm ekranları `app/build/screenshots` altına da çizer. Arayüz
+  değişikliklerinden sonra ekran görüntülerine bakın.
+- Testler kart ya da ağ gerektirmemeli: `core/src/test` içindeki `TestKeys` (yazılım anahtarları) ve
+  `LocalPki` (yerel zaman damgası sunucusu ve CRL) kullanılır.
+- Kod, yorumlar, tanımlayıcılar ve test verileri İngilizcedir. Kullanıcıya görünen tüm metinler iki
+  dilde `app/src/main/resources/i18n/strings_{en,tr}.properties` içindedir; `StringsTest` iki dosyanın
+  aynı anahtarlara sahip olduğunu kontrol eder. `core` arayüz metni değil, hata kodu döndürür.
+- `core` arayüzden bağımsız kalmalıdır.
+- [SECURITY.md](SECURITY.md#tasarım-kuralları) içindeki kurallara uyun: PIN asla yeniden denenmez;
+  PIN, parola ya da kişisel veri loglanmaz ve saklanmaz; testlere, loglara ya da commit'lere gerçek
+  kişisel veri girmez.
+- Kullanıcıya görünen her değişikliği [CHANGELOG.md](CHANGELOG.md) ve [CHANGELOG.en.md](CHANGELOG.en.md)
+  içinde "Yayımlanmadı" / "Unreleased" başlığına ekleyin.
 
-- One topic per pull request, with tests for new behavior.
-- Describe what changed and how you tested it, including the card and OS if you tested with a card.
+## Pull request'ler
 
-## License of contributions
+- Her pull request tek bir konu içersin ve yeni davranışın testleri olsun.
+- Neyin değiştiğini ve nasıl test ettiğinizi yazın; kartla denediyseniz kartı ve işletim sistemini belirtin.
 
-E-Signer is licensed under the AGPL-3.0. By submitting a contribution you agree that it is licensed
-under the AGPL-3.0, and you grant the maintainer the right to also license your contribution under
-other terms, including commercial licenses. Only submit work you have the right to contribute.
+## Sürüm çıkarma
+
+1. `gradle.properties` içinde `appVersion` değerini yükseltin (ör. `0.4.2`).
+2. İki değişiklik günlüğünde "Yayımlanmadı" / "Unreleased" başlığını `[0.4.2] - YYYY-AA-GG` yapın,
+   üstüne boş bir "Yayımlanmadı" başlığı ekleyin ve sondaki karşılaştırma bağlantılarını güncelleyin.
+3. Commit'leyip push'layın, CI'ın geçmesini bekleyin.
+4. Etiketi oluşturup push'layın: `git tag v0.4.2 && git push origin v0.4.2`.
+
+`Release` workflow'u testleri çalıştırır; macOS, Windows ve Linux paketlerini üretir; notları değişiklik
+günlüklerinden alarak (`tools/release-notes.sh`) GitHub release'ini yayımlar. Etiket `appVersion` ile
+eşleşmezse ya da değişiklik günlüğünde o sürümün bölümü yoksa workflow durur. Yayımlamadan yalnızca
+paketleri denemek için Actions sekmesinden workflow'u elle çalıştırın; paketler çalışmanın
+artifact'ları olarak iner.
+
+## Katkıların lisansı
+
+E-Signer AGPL-3.0 ile lisanslanmıştır. Katkı göndererek katkınızın AGPL-3.0 ile lisanslanmasını kabul
+eder ve proje sahibine katkınızı ticari lisanslar dahil başka koşullarla da lisanslama hakkı tanırsınız.
+Yalnızca katkıda bulunma hakkınız olan çalışmaları gönderin.

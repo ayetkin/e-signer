@@ -20,6 +20,7 @@ import androidx.compose.ui.window.WindowState
 import sh.yetkin.esigner.app.ui.App
 import sh.yetkin.esigner.app.ui.AppTheme
 import sh.yetkin.esigner.app.ui.drawAppIcon
+import sh.yetkin.esigner.app.ui.openLink
 import java.awt.Desktop
 import java.awt.Dimension
 import java.awt.FileDialog
@@ -35,6 +36,8 @@ fun main() {
         // Must be set before AWT starts: title bar follows the system dark mode, menus go to the screen menu bar.
         System.setProperty("apple.awt.application.appearance", "system")
         System.setProperty("apple.laf.useScreenMenuBar", "true")
+        // Without it the app menu's About item shows the main class name ("About MainKt").
+        System.setProperty("apple.awt.application.name", "E-Signer")
     }
     runApp()
 }
@@ -42,16 +45,14 @@ fun main() {
 private fun runApp() = application {
     val scope = rememberCoroutineScope()
     val state = remember { AppState(scope) }
-    val windowState = remember {
-        WindowState(
-            placement = if (state.settings.windowMode == WindowMode.MAXIMIZED) WindowPlacement.Maximized else WindowPlacement.Floating,
-            size = if (state.settings.windowMode == WindowMode.LAST) state.settings.lastWindowSize else SigningSettings.DEFAULT_WINDOW_SIZE,
-            position = WindowPosition(Alignment.Center),
-        )
+    val windowState = remember { WindowState(size = SigningSettings.CARD_WINDOW_SIZE, position = WindowPosition(Alignment.Center)) }
+    val onCardScreen = state.screen == Screen.CARD_SELECT
+    val rememberWorkspaceSize = {
+        // For WindowMode.LAST; a maximized window reports the screen size, not the one to restore.
+        if (!onCardScreen && windowState.placement == WindowPlacement.Floating) state.settings.rememberWindowSize(windowState.size)
     }
     val quit = {
-        // For WindowMode.LAST; a maximized window reports the screen size, not the one to restore.
-        if (windowState.placement == WindowPlacement.Floating) state.settings.rememberWindowSize(windowState.size)
+        rememberWorkspaceSize()
         state.dispose()
     }
     LaunchedEffect(Unit) {
@@ -64,6 +65,7 @@ private fun runApp() = application {
         if (isMac) runCatching {
             Desktop.getDesktop().run {
                 setPreferencesHandler { state.openSettings() }
+                setAboutHandler { state.openAbout() }
                 // Cmd+Q would otherwise exit without waiting for a running card step to close its session.
                 setQuitHandler { _, response ->
                     quit()
@@ -82,18 +84,24 @@ private fun runApp() = application {
         icon = AppIconPainter(),
         state = windowState,
     ) {
-        // A changed window setting applies at once, not only on the next start.
-        LaunchedEffect(state.settings.windowMode) {
-            when (state.settings.windowMode) {
-                WindowMode.MAXIMIZED -> windowState.placement = WindowPlacement.Maximized
-                WindowMode.DEFAULT -> {
-                    windowState.placement = WindowPlacement.Floating
-                    windowState.size = SigningSettings.DEFAULT_WINDOW_SIZE
+        // Switching screens resizes the window; a changed window setting applies at once, not only on the next start.
+        LaunchedEffect(onCardScreen, state.settings.windowMode) {
+            // Leaving the workspace: keep its size before the window shrinks to the card screen.
+            if (onCardScreen && windowState.size != SigningSettings.CARD_WINDOW_SIZE && windowState.placement == WindowPlacement.Floating) {
+                state.settings.rememberWindowSize(windowState.size)
+            }
+            window.minimumSize = if (onCardScreen) Dimension(560, 600) else Dimension(880, 620)
+            val mode = state.settings.windowMode
+            windowState.placement = if (!onCardScreen && mode == WindowMode.MAXIMIZED) WindowPlacement.Maximized else WindowPlacement.Floating
+            if (windowState.placement == WindowPlacement.Floating) {
+                windowState.size = when {
+                    onCardScreen -> SigningSettings.CARD_WINDOW_SIZE
+                    mode == WindowMode.LAST -> state.settings.lastWindowSize
+                    else -> SigningSettings.DEFAULT_WINDOW_SIZE
                 }
-                WindowMode.LAST -> Unit
+                windowState.position = WindowPosition(Alignment.Center)
             }
         }
-        window.minimumSize = Dimension(880, 620)
         if (isMac) {
             // Unified title bar: content runs under a transparent title bar, the sidebar reaches the traffic lights.
             window.rootPane.putClientProperty("apple.awt.fullWindowContent", true)
@@ -128,6 +136,21 @@ private fun runApp() = application {
                         state.selectTab(Tab.VERIFY)
                         state.verifyWithoutCard()
                     }
+                }
+                Menu(state.strings["menu.window"]) {
+                    Item(state.strings["menu.minimize"], shortcut = KeyShortcut(Key.M, meta = true)) {
+                        windowState.isMinimized = true
+                    }
+                    Item(state.strings["menu.zoom"], enabled = !onCardScreen) {
+                        windowState.placement =
+                            if (windowState.placement == WindowPlacement.Maximized) WindowPlacement.Floating else WindowPlacement.Maximized
+                    }
+                }
+                Menu(state.strings["menu.help"]) {
+                    Item(state.strings["menu.about"], onClick = { state.openAbout() })
+                    Item(state.strings["menu.checkUpdates"], onClick = { state.openAbout(checkUpdates = true) })
+                    Separator()
+                    Item(state.strings["menu.website"], onClick = { openLink(Updates.REPOSITORY_URL) })
                 }
             }
         }

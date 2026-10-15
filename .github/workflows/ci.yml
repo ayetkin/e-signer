@@ -3,7 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', 'NOTICE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', 'NOTICE']
+  # The release workflow runs the same tests before it publishes.
+  workflow_call:
+
+# A newer push to the same branch or pull request makes the running check pointless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -11,6 +20,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

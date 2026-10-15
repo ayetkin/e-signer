@@ -315,6 +315,31 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         settingsOpen = false
     }
 
+    // About and updates
+
+    var aboutOpen by mutableStateOf(false)
+        private set
+    var updateCheck by mutableStateOf<UpdateCheck>(UpdateCheck.Idle)
+        internal set
+
+    fun openAbout(checkUpdates: Boolean = false) {
+        if (flow is SignFlow.Signing || flow is SignFlow.Confirm) return
+        aboutOpen = true
+        if (checkUpdates) checkForUpdates()
+    }
+
+    fun closeAbout() {
+        aboutOpen = false
+    }
+
+    fun checkForUpdates() {
+        if (updateCheck == UpdateCheck.Checking) return
+        updateCheck = UpdateCheck.Checking
+        scope.launch {
+            updateCheck = withContext(Dispatchers.IO) { runCatching { Updates.check() }.getOrDefault(UpdateCheck.Failed) }
+        }
+    }
+
     // Signing
 
     fun requestSign() {

@@ -13,14 +13,14 @@
 #   DIST      directory with lib/ and runtime/   (default dist/linux_arm64)
 #   JPACKAGE  jpackage binary                    (default: from vendor/target-jdk.tar.gz)
 #   TYPE      app-image, or dmg for a disk image with the app and an Applications link (default app-image)
-#   VERSION   app version                        (default 0.4.1)
+#   VERSION   app version                        (default: appVersion in gradle.properties)
 #   OUT       output directory                   (default dist/mac)
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="${DIST:-$ROOT/dist/linux_arm64}"
 TYPE="${TYPE:-app-image}"
-VERSION="${VERSION:-0.4.1}"
+VERSION="${VERSION:-$(sed -n 's/^appVersion=//p' "$ROOT/gradle.properties")}"
 OUT="${OUT:-$ROOT/dist/mac}"
 
 test -d "$DIST/lib" || { echo "Run the container build first: $DIST/lib not found" >&2; exit 1; }

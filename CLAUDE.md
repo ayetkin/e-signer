@@ -65,13 +65,18 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
     görünür imza, Zaman damgası, Kart = kütüphane yolu + takılı kartların PIN'siz okunan ayrıntıları). Taslak
     üzerinde çalışır, "Kaydet" ile uygulanır. Kenar çubuğundaki "Ayarlar", kart ekranındaki dişli ve macOS
     Preferences menüsü açar.
+  - Pencere: kart ekranı ortada küçük pencere (`SigningSettings.CARD_WINDOW_SIZE`), çalışma alanı `WindowMode`'a göre.
+    macOS menüleri: Dosya, Görünüm, Pencere, Yardım (Hakkında, güncelleme denetimi, GitHub). `ui/AboutDialog.kt`:
+    sürüm, geliştirici, lisans; `Updates` yalnızca kullanıcı isteyince GitHub `releases/latest`'e sorar.
+    Sürümün tek kaynağı `gradle.properties` `appVersion` (jar'a `version.properties` olarak gömülür; release
+    workflow etiketten `-PappVersion` verir, `package-mac.sh` varsayılanı buradan okur).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
     `java.util.prefs`'te. `StringsTest` iki dilin anahtar eşitliğini ve koddaki her `str("...")` anahtarını kontrol eder.
 - Arayüz düzeni: çalışma alanı ve sonuç ekranı `AppShell` (`ui/Sidebar.kt`) içinde. Sol panelde sekmeler,
   kart (Değiştir), imza ayarları (biçim, görünür imza, seviye) ve "Ayarlar"; sağda içerik ve yalnızca "İmzala" düğmeli alt çubuk.
 - Simge: `ui/AppIcon.kt` kodla çizilir (uygulama içi logo + pencere simgesi). `IconTest` 1024 px PNG üretir
   (`app/build/icon/`), sonuçlar `app/packaging/` altına kopyalanır; `icon.icns` macOS'ta `sips` + `iconutil`
-  ile üretildi. Windows `.ico` henüz yok.
+  ile üretildi. Windows `icon.ico` (16-256 px PNG'li) icon.png'den üretildi.
 - `tools/screenshots.Dockerfile` + `app/src/test/.../ScreenshotTest.kt`: tüm ekranları örnek verilerle
   `app/build/screenshots/*.png`'ye çizer (TR, EN, koyu tema). Arayüz değişikliğinden sonra görüntülere bakarak
   kontrol et.
@@ -162,7 +167,8 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   çakışmayan ilk boş nokta seçilir (DSS çakışan alanı reddeder, üst üste imzayı kırar).
 - Kamu SM mali mühür: politika `2.16.792.1.2.1.1.5.7.4.1`, 5070 QC beyanı ve `nonRepudiation` yok, kök
   "KamuSM Kurumsal Kök" S1/S2 (güven listesinde). Hukuki dayanak 509 Sıra No'lu VUK Genel Tebliği; doğrulamada
-  `isValidFiscalSeal` ile 5070'ten ayrı gösterilir. Kamu SM bazı özetleri DER değil sunulan PEM dosyası üzerinden yayımlıyor.
+  `isValidFiscalSeal` ile 5070'ten ayrı gösterilir. İmzalamada `CertificateInfo.preferredSigner` geçerli
+  nonRepudiation anahtarından sonra mali mührü seçer; arayüzde "Mali mühür, Vergi Kimlik No ..." görünür (gerçek kartla denenmedi). Kamu SM bazı özetleri DER değil sunulan PEM dosyası üzerinden yayımlıyor.
 - Kart tespiti gerçek AKİS kartla doğrulandı: PIN'siz slot/token okuma, slot ID 1, açık imza sertifikası okunabiliyor.
 - Headless ekran görüntüsü: `ImageComposeScene` + Skiko linux; imajda `libgl1` ve font (Inter/DejaVu) gerekir.
 - Compose 1.7.3'te sürükle-bırak: `Modifier.dragAndDropTarget` + `event.nativeEvent as DropTargetDropEvent`
@@ -188,8 +194,15 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   jlink'teki JDK ile hedef JDK sürümü birebir aynı olmalı (imaj sürümü sabitlenmeli).
 - `container build ... --output type=local,dest=dist .` çıktıyı `dist/linux_arm64/` altına koyar.
 - Dağıtım paketleri (`.dmg`, `.msi`) her platformda kendi üzerinde `jpackage` ile üretilmeli → GitHub Actions matrisi.
-  macOS: `.github/workflows/release-mac.yml` (`v*` etiketi ya da elle): `macos-15` (arm64) ve `macos-15-intel` (x64)
-  üzerinde test + `installDist` + `jlink` + `tools/package-mac.sh` (`TYPE=dmg`), etiketle GitHub release'e yükler.
+  `.github/workflows/release.yml` (`v*` etiketi ya da elle): her platformda `installDist` + `jlink`, sonra
+  macOS `macos-15` (arm64) ve `macos-15-intel` (x64): `tools/package-mac.sh` (`TYPE=dmg`); Windows `windows-2022`
+  (WiX 3 orada kurulu): jpackage app-image + `.msi` + `.zip` (`app/packaging/icon.ico`, icon.png'den üretildi);
+  Linux `ubuntu-24.04`: app-image + `.deb` + `.tar.gz`. **Windows ve Linux paketleri hiç test edilmedi.**
+  Testler `ci.yml` çağrılarak paralel koşar, geçmezse release yayımlanmaz. Etiket `gradle.properties`
+  `appVersion` ile aynı olmalı. Release notları `tools/release-notes.sh` ile `CHANGELOG.md` (TR) ve
+  `CHANGELOG.en.md`'deki sürüm bölümünden gelir; bölüm yoksa workflow durur. Sürüm çıkarma adımları `CONTRIBUTING.md`.
+- Belgeler: ana `.md` dosyaları Türkçe, İngilizceleri `.en.md` (README, INSTALL, CONTRIBUTING, SECURITY, CHANGELOG).
+  Kullanıcıya görünen her değişiklik iki changelog'da "Yayımlanmadı"/"Unreleased" altına yazılır.
   dmg'yi jpackage değil `hdiutil` üretir (jpackage'ın Applications kısayolu Finder betiğiyle yapılıyor, CI'da sessizce
   oluşmuyor). Uygulama ad-hoc imzalı, Developer ID/notarization yok: kullanıcı ilk açılışta "Yine de Aç" der
   (`INSTALL.md`). jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik

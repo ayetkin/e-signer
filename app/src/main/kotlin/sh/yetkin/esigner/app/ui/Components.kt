@@ -278,10 +278,13 @@ fun formatDate(instant: Instant): String =
         .withZone(ZoneId.systemDefault())
         .format(instant)
 
-/** "National ID 12*******01" or "Tax ID 12******90", depending on what the certificate carries. */
+/**
+ * "National ID 12*******01" or "Tax ID 12******90", depending on what the certificate carries; a fiscal seal says
+ * so in front ("Fiscal seal, Tax ID 12******90").
+ */
 @Composable
 fun idLine(info: CertificateInfo): String? = info.maskedNationalId?.let {
-    str(
+    val id = str(
         when (info.idType) {
             IdType.NATIONAL_ID -> "card.nationalId"
             IdType.TAX_ID -> "card.taxId"
@@ -289,6 +292,7 @@ fun idLine(info: CertificateInfo): String? = info.maskedNationalId?.let {
         },
         it,
     )
+    if (info.isFiscalSeal) str("card.fiscalSealId", id) else id
 }
 
 @Composable
@@ -327,4 +331,9 @@ fun revealFile(file: File) {
         if (desktop.isSupported(Desktop.Action.BROWSE_FILE_DIR)) desktop.browseFileDirectory(file)
         else desktop.open(file.parentFile)
     }
+}
+
+/** Opens [url] in the default browser; nothing happens where the platform cannot. */
+fun openLink(url: String) {
+    runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI(url)) }
 }

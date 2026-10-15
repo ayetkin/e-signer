@@ -35,6 +35,18 @@ data class CertificateInfo(
     companion object {
         private const val NON_REPUDIATION = 1
 
+        /**
+         * Index of the certificate to sign with: a valid nonRepudiation one, then a valid fiscal seal (which has no
+         * nonRepudiation), then the same ignoring validity. -1 when none qualifies.
+         */
+        fun preferredSigner(certificates: List<CertificateInfo>, now: Instant = Instant.now()): Int =
+            listOf<(CertificateInfo) -> Boolean>(
+                { it.isSigningCertificate && it.isValidAt(now) },
+                { it.isFiscalSeal && it.isValidAt(now) },
+                { it.isSigningCertificate },
+                { it.isFiscalSeal },
+            ).firstNotNullOfOrNull { rule -> certificates.indexOfFirst(rule).takeIf { it >= 0 } } ?: -1
+
         fun from(cert: X509Certificate): CertificateInfo {
             val subject = X500Name.getInstance(cert.subjectX500Principal.encoded)
             val issuer = X500Name.getInstance(cert.issuerX500Principal.encoded)

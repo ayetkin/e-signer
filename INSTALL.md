@@ -1,66 +1,113 @@
-# Installing E-Signer on macOS
+# E-Signer kurulumu
 
-[Türkçe](INSTALL.tr.md)
+[English](INSTALL.en.md)
 
-## What you need
+E-Signer macOS'ta geliştirilip test ediliyor. **Windows ve Linux paketleri henüz test edilmedi:**
+otomatik olarak üretiliyorlar ama bu sistemlerde açılış, kart algılama ve imzalama doğrulanmadı.
+Denerseniz sonucu [bildirmeniz](https://github.com/ayetkin/e-signer/issues) çok yardımcı olur.
 
-- **macOS 11 (Big Sur) or later**, on Apple silicon or Intel. Java is included in the app; you don't
-  need to install it.
-- **A smart card reader.** Most USB readers work with the driver built into macOS. If yours isn't
-  detected, install the driver from the reader's manufacturer.
-- **The driver of your e-signature card (PKCS#11).** For AKİS cards this is the AKİS card driver,
-  which installs `/usr/local/lib/libakisp11.dylib`. Your certificate provider (Kamu SM, E-GÜVEN,
-  E-Tuğra, TürkTrust and others) gives you the driver with the card; Kamu SM also offers it on its
-  [driver download page](https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/).
-  If the driver is installed somewhere else, set its path in **Settings > Card**.
-- **An internet connection** only for timestamped and long-term signatures and for checking certificate
-  revocation when verifying. Standard signatures work offline.
+## Gerekenler
 
-Verifying signatures needs neither a card nor a driver.
+- Java uygulamanın içinde gelir, ayrıca kurmanız gerekmez.
+- **Akıllı kart okuyucu.** USB okuyucuların çoğu işletim sisteminin kendi sürücüsüyle çalışır.
+  Okuyucunuz algılanmazsa üreticisinin sürücüsünü kurun.
+- **E-imza kartınızın sürücüsü (PKCS#11).** Sürücüyü sertifikanızı aldığınız sağlayıcı (Kamu SM,
+  E-GÜVEN, E-Tuğra, TürkTrust ve diğerleri) kartla birlikte verir; Kamu SM ayrıca
+  [sürücü yükleme sayfasında](https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/)
+  sunar. AKİS kartlar için uygulamanın aradığı yerler:
 
-## Install
+  | Sistem | Sürücü dosyası |
+  | --- | --- |
+  | macOS | `/usr/local/lib/libakisp11.dylib` |
+  | Windows | `C:\Windows\System32\akisp11.dll` (doğrulanmadı) |
+  | Linux | `/usr/lib/libakisp11.so` (doğrulanmadı) |
 
-1. Open the [latest release](https://github.com/ayetkin/e-signer/releases/latest) and download the disk
-   image for your Mac:
-   - `E-Signer-<version>-macos-arm64.dmg` for Apple silicon (M1 and later),
-   - `E-Signer-<version>-macos-x64.dmg` for Intel.
+  Sürücü başka bir yerdeyse yolunu **Ayarlar > Kart** bölümünden girin.
+- **İnternet bağlantısı** yalnızca zaman damgalı ve uzun süreli imzalar, doğrulamada sertifika iptal
+  kontrolü ve güncelleme denetimi için gerekir. Standart imza çevrimdışı çalışır.
 
-   Not sure which one? Apple menu > **About This Mac**: "Chip: Apple M..." is Apple silicon,
-   "Processor: Intel" is Intel.
-2. Open the disk image and drag **E-Signer** onto **Applications**.
-3. Open E-Signer from Applications or Launchpad.
+İmza doğrulamak için kart da sürücü de gerekmez.
 
-### The first time you open it
+Paketler [son sürüm](https://github.com/ayetkin/e-signer/releases/latest) sayfasında.
 
-E-Signer isn't signed with an Apple Developer ID yet, so macOS stops it the first time with a message
-like "Apple could not verify 'E-Signer' is free of malware". To open it anyway:
+## macOS
 
-1. Click **Done** (or **OK**) on the message.
-2. Open **System Settings > Privacy & Security**, scroll down to the message about E-Signer and
-   click **Open Anyway**, then confirm with your password.
+macOS 11 (Big Sur) veya sonrası gerekir.
 
-You only need to do this once. Alternatively, run this in Terminal after copying the app:
+1. Mac'inize uygun disk görüntüsünü indirin:
+   - Apple silicon (M1 ve sonrası) için `E-Signer-<sürüm>-macos-arm64.dmg`,
+   - Intel için `E-Signer-<sürüm>-macos-x64.dmg`.
+
+   Hangisi olduğundan emin değilseniz: Apple menüsü > **Bu Mac Hakkında**. "Çip: Apple M..." yazıyorsa
+   Apple silicon, "İşlemci: Intel" yazıyorsa Intel'dir.
+2. Disk görüntüsünü açın ve **E-Signer**'ı **Uygulamalar** klasörüne sürükleyin.
+3. E-Signer'ı Uygulamalar'dan ya da Launchpad'den açın.
+
+### İlk açılışta
+
+E-Signer henüz Apple Developer ID ile imzalı değil. Bu yüzden macOS ilk açılışta "Apple, 'E-Signer'ın
+kötü amaçlı yazılım içermediğini doğrulayamadı" gibi bir uyarıyla uygulamayı durdurur. Yine de açmak için:
+
+1. Uyarıda **Bitti**'ye (ya da **Tamam**'a) tıklayın.
+2. **Sistem Ayarları > Gizlilik ve Güvenlik** bölümünü açın, aşağıdaki E-Signer uyarısını bulun,
+   **Yine de Aç**'a tıklayın ve parolanızla onaylayın.
+
+Bunu yalnızca bir kez yapmanız gerekir. İsterseniz uygulamayı kopyaladıktan sonra Terminal'de şunu da
+çalıştırabilirsiniz:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/E-Signer.app
 ```
 
-Only do this for a disk image you downloaded from this project's releases page.
+Bunu yalnızca bu projenin sürümler sayfasından indirdiğiniz disk görüntüsü için yapın.
 
-## Troubleshooting
+## Windows (test edilmedi)
 
-- **"Card library not found"**: the card driver isn't installed, or it's in a different place. Install
-  the driver, or set its path in **Settings > Card**.
-- **"No card reader found"**: reconnect the reader, try another USB port, or install the reader's driver.
-- **The card is listed but signing fails**: see **Technical details** under the error and include them
-  when you [report an issue](https://github.com/ayetkin/e-signer/issues). They never contain your PIN.
+Windows 10 veya 11, 64 bit.
 
-## Uninstall
+- **Kurulum:** `E-Signer-<sürüm>-windows-x64.msi` dosyasını çalıştırın. E-Signer Başlat menüsüne ve
+  masaüstüne eklenir.
+- **Kurulumsuz:** `E-Signer-<sürüm>-windows-x64.zip` dosyasını bir klasöre açın ve
+  `E-Signer\E-Signer.exe` dosyasını çalıştırın.
 
-Drag E-Signer from Applications to the Trash. Its settings (language, signature level, time-stamp
-server; never your PIN or password) are kept in
-`~/Library/Preferences/com.apple.java.util.prefs.plist` under `sh/yetkin/esigner`.
+Uygulama henüz kod imzalı değil. Windows SmartScreen "Windows bilgisayarınızı korudu" derse
+**Ek bilgi**'ye, ardından **Yine de çalıştır**'a tıklayın.
 
-## Building from source
+## Linux (test edilmedi)
 
-See [Building and running](README.md#building-and-running) in the README.
+64 bit (x86_64) dağıtımlar.
+
+- **Debian ve Ubuntu:** `.deb` paketini kurun; uygulama `/opt/e-signer` altına kurulur ve uygulama
+  menüsüne eklenir:
+
+  ```sh
+  sudo apt install ./E-Signer-<sürüm>-linux-x64.deb
+  ```
+- **Diğer dağıtımlar:** `E-Signer-<sürüm>-linux-x64.tar.gz` dosyasını açın ve
+  `E-Signer/bin/E-Signer` dosyasını çalıştırın.
+
+Kart okuyucu için PC/SC servisi gerekir (Debian ve Ubuntu'da `sudo apt install pcscd`).
+
+## Sorun giderme
+
+- **"Kart kütüphanesi bulunamadı"**: kart sürücüsü kurulu değil ya da başka bir yerde. Sürücüyü kurun
+  ya da yolunu **Ayarlar > Kart** bölümünden girin.
+- **"Kart okuyucu bulunamadı"**: okuyucuyu çıkarıp takın, başka bir USB girişi deneyin ya da okuyucunun
+  sürücüsünü kurun.
+- **Kart görünüyor ama imza atılamıyor**: hatanın altındaki **Teknik ayrıntılar**'a bakın ve
+  [hata kaydı açarken](https://github.com/ayetkin/e-signer/issues) ekleyin. Bu ayrıntılar PIN'inizi
+  hiçbir zaman içermez.
+
+## Kaldırma
+
+- **macOS:** E-Signer'ı Uygulamalar'dan Çöp Sepeti'ne sürükleyin.
+- **Windows:** Ayarlar > Uygulamalar'dan E-Signer'ı kaldırın ya da zip'ten açtığınız klasörü silin.
+- **Linux:** `sudo apt remove e-signer` ya da tar.gz'den açtığınız klasörü silin.
+
+Ayarlar (dil, imza seviyesi, zaman damgası sunucusu; PIN ya da parola asla) `sh/yetkin/esigner` altında
+Java tercihlerinde tutulur: macOS'ta `~/Library/Preferences/com.apple.java.util.prefs.plist`, Windows'ta
+kayıt defterinde `HKEY_CURRENT_USER\Software\JavaSoft\Prefs`, Linux'ta `~/.java/.userPrefs`.
+
+## Kaynak koddan derleme
+
+README'deki [Derleme ve çalıştırma](README.md#derleme-ve-çalıştırma) bölümüne bakın.

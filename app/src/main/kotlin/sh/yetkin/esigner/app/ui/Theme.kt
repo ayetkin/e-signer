@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.SystemFont
 import androidx.compose.ui.unit.Dp
@@ -105,8 +106,17 @@ private val systemFontFamily: FontFamily by lazy {
 
 private const val MAC_UI_FONT = ".AppleSystemUIFont"
 
+// The extra line height goes evenly above and below the glyphs; Compose's proportional default puts more of it on
+// top with San Francisco, so labels sit low in buttons.
 private fun style(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, tracking: TextUnit = 0.sp) =
-    TextStyle(fontFamily = systemFontFamily, fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = tracking)
+    TextStyle(
+        fontFamily = systemFontFamily,
+        fontSize = size.sp,
+        lineHeight = line.sp,
+        fontWeight = weight,
+        letterSpacing = tracking,
+        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+    )
 
 /** macOS text sizes: 13 pt body, 15-22 pt titles, no Material letter spacing. */
 private val MacTypography by lazy {

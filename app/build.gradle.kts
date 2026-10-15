@@ -42,6 +42,13 @@ application {
     applicationDefaultJvmArgs = pkcs11Exports + listOf("--add-exports", "java.desktop/com.apple.eawt.event=ALL-UNNAMED")
 }
 
+// Shown in About and compared with the latest GitHub release.
+val appVersion = providers.gradleProperty("appVersion").get()
+tasks.processResources {
+    inputs.property("appVersion", appVersion)
+    filesMatching("version.properties") { expand("version" to appVersion) }
+}
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs(pkcs11Exports)
