@@ -8,6 +8,34 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.5.1] - 2026-10-15
+
+### Eklenenler
+
+- Zaman damgası ayarları, sunucudan bir deneme damgası alınmadan kaydedilmez; adres ya da parola hatası imza
+  sırasında değil ayar penceresinde görünür. Kamu SM adresi, "Kamu SM müşterisi" kimlik doğrulaması olmadan
+  kaydedilemez.
+- Kart seçim ekranında, kart ya da okuyucu bulunamadığında AKİS kart sürücüsünü indirme bağlantısı.
+- Kenar çubuğunda zaman damgası satırı: kullanılan sunucu, eksik ayar ya da kullanılmadığı.
+- Zaman damgalı imzalarda PDF'teki imza simgesi yeşil.
+- Doğrulamada zaman damgasını veren sağlayıcı ve "Resmi zaman damgası" etiketi (damga geçerli ve yetkili bir
+  sağlayıcıdan).
+- Kenar çubuğundaki Biçim ve PDF üzerinde menülerinde her seçeneğin simgesi.
+
+### Değişenler
+
+- Görünür imzanın yazısı (Dijital olarak imzalanmıştır, ad, zaman) Inter yazı tipiyle çizilir.
+- Zaman damgası kimlik doğrulamasında "Yok" seçeneği kaldırıldı: sağlayıcılar kimlik bilgisi olmadan damga
+  vermiyor. Varsayılan "Kamu SM müşterisi".
+- Dosya listesindeki ve önizlemedeki açıklama yazıları kaldırıldı.
+- Dosya listesi daha dar; listenin ve önizlemenin başlıkları aynı yükseklikte.
+
+### Düzeltilenler
+
+- Kamu SM zaman damgası sunucusu kullanıcı bilgisi olmadan boş yanıt verdiğinde "geçersiz yanıt" yerine
+  "sunucu isteği reddetti, kimlik bilgilerini kontrol edin" hatası gösterilir.
+- macOS'ta düğme yazıları dikeyde ortalanır.
+
 ## [0.5.0] - 2026-10-15
 
 ### Eklenenler
@@ -52,6 +80,7 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.0...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

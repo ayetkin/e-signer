@@ -103,6 +103,13 @@ fun CardSelectScreen(state: AppState) {
                 }
             }
 
+            // Without the driver the reader or the card stays invisible, so the download is offered right there.
+            val scan = state.scan
+            if (scan is ScanState.Failed || scan is ScanState.Ready && scan.scan.cards.isEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                DriverHelp()
+            }
+
             Spacer(Modifier.height(20.dp))
             val card = state.selectedCard
             Button(
@@ -121,7 +128,44 @@ fun CardSelectScreen(state: AppState) {
                 Text(str("cardSelect.verifyWithoutCard"))
             }
             TextButton(onClick = { state.openSettings(SettingsSection.CARD) }) {
-                Text(str("settings.card.open"), style = MaterialTheme.typography.labelLarge)
+                Text(str("settings.card.open"))
+            }
+        }
+    }
+}
+
+/** Kamu SM's driver download page (AKİS middleware for Windows, macOS and Linux). */
+private const val DRIVER_URL = "https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/"
+
+/** Where to get the AKİS card driver: what it is for, what to do after installing, and the download button. */
+@Composable
+private fun DriverHelp() {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(colors.primaryContainer.copy(alpha = 0.25f), MaterialTheme.shapes.large)
+            .border(1.dp, colors.primary.copy(alpha = 0.25f), MaterialTheme.shapes.large)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(Modifier.size(40.dp).background(colors.primary.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(AppIcons.Download, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(str("cardSelect.driver.title"), style = MaterialTheme.typography.titleSmall)
+            Text(str("cardSelect.driver.body"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { openLink(DRIVER_URL) }) {
+                    Text(str("cardSelect.driver.download"))
+                    Icon(AppIcons.OpenInNew, contentDescription = null, modifier = Modifier.padding(start = 6.dp).size(14.dp))
+                }
+                Text(
+                    "kamusm.bilgem.tubitak.gov.tr",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
             }
         }
     }

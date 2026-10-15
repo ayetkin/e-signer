@@ -337,3 +337,6 @@ fun revealFile(file: File) {
 fun openLink(url: String) {
     runCatching { java.awt.Desktop.getDesktop().browse(java.net.URI(url)) }
 }
+
+/** Height of the header rows above the file list and the preview, so the two panels line up side by side. */
+val PANEL_HEADER_HEIGHT = 64.dp

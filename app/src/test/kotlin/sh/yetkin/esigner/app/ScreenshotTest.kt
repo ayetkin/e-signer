@@ -248,6 +248,11 @@ class ScreenshotTest {
                 settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
             }
             shot("$l-17-settings-kamusm", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); openSettings(SettingsSection.TIMESTAMP) })
+            shot("$l-17b-settings-kamusm-no-auth", state(lang) {
+                ready()
+                settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.BASIC)
+                openSettings(SettingsSection.TIMESTAMP)
+            })
             shot("$l-18-settings-signature", state(lang) { ready(); files.addAll(sampleFiles()); openSettings(SettingsSection.SIGNATURE) })
             shot("$l-18b-settings-general", state(lang) { ready(); openSettings() })
             shot("$l-18c-settings-card", state(lang) { ready(); openSettings(SettingsSection.CARD) })
@@ -258,6 +263,13 @@ class ScreenshotTest {
                 ready()
                 files.addAll(sampleFiles())
                 settings.setForTest(SigningLevel.BASELINE_LT)
+            })
+            shot("$l-11d-workspace-timestamped", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                kamuSm()
+                settings.updateStamp(StampStyle.ICON_TEXT)
+                placeStamp(files.first(), SIGNATURE_SPOT)
             })
             shot("$l-1a-dialog-timestamped", state(lang) { ready(); files.addAll(sampleFiles()); kamuSm(); flow = SignFlow.Confirm() })
             shot("$l-1b-results-tsa-rejected", state(lang) {
@@ -318,7 +330,25 @@ class ScreenshotTest {
                 )
                 verifyItems.addAll(
                     listOf(
-                        VerifyItem(f[0], VerifyState.Done(ValidationReport(f[0], listOf(seal, legal), false))),
+                        VerifyItem(
+                            f[0],
+                            VerifyState.Done(
+                                ValidationReport(
+                                    f[0],
+                                    listOf(
+                                        seal,
+                                        legal.copy(
+                                            timestampTime = Instant.parse("2026-10-14T09:30:04Z"),
+                                            timestampAuthority = "Sample Timestamp Authority",
+                                            trustedTimestamp = true,
+                                            format = "PAdES-BASELINE-T",
+                                            messages = emptyList(),
+                                        ),
+                                    ),
+                                    false,
+                                ),
+                            ),
+                        ),
                         VerifyItem(
                             f[1],
                             VerifyState.Done(

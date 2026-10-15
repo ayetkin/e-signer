@@ -5,7 +5,10 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.bouncycastle.tsp.TimeStampToken
 import org.bouncycastle.cms.CMSSignedData
+import com.sun.net.httpserver.HttpServer
 import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -15,6 +18,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -52,6 +56,8 @@ class TimestampTest {
         assertEquals("PAdES-BASELINE-T", check.format)
         assertRecent(check.timestampTime)
         assertTrue(!check.timestampTime!!.isBefore(before.minusSeconds(1)))
+        assertTrue(check.trustedTimestamp, "the test TSA chains to the test anchors")
+        assertNotNull(check.timestampAuthority)
         assertEquals(1, pki.tsaRequests.get())
     }
 
@@ -68,6 +74,7 @@ class TimestampTest {
         val check = offlineValidator().validate(sign(SigningLevel.BASELINE_B, pdf(), SignatureFormat.PADES)).signatures.single()
         assertEquals("PAdES-BASELINE-B", check.format)
         assertNull(check.timestampTime)
+        assertFalse(check.trustedTimestamp)
         assertEquals(0, pki.tsaRequests.get())
     }
 
@@ -125,10 +132,27 @@ class TimestampTest {
                 .getTimeStampResponse(DigestAlgorithm.SHA256, digest)
             val token = TimeStampToken(CMSSignedData(ok.bytes))
             assertContentEquals(digest, token.timeStampInfo.messageImprintDigest)
+            HttpTimestampSource(tsa.tsaUrl, TimestampAuth.KamuSm(12345L, "s3cret".toCharArray())).test()
 
             val wrong = HttpTimestampSource(tsa.tsaUrl, TimestampAuth.KamuSm(12345L, "wrong".toCharArray()))
             val e = assertFailsWith<SigningException> { wrong.getTimeStampResponse(DigestAlgorithm.SHA256, digest) }
             assertEquals(SigningError.TIMESTAMP_REJECTED, e.error)
+        }
+    }
+
+    @Test
+    fun `an empty answer counts as a refusal`() {
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
+        server.createContext("/") { it.sendResponseHeaders(200, -1); it.close() }
+        server.start()
+        try {
+            val digest = MessageDigest.getInstance("SHA-256").digest("data".toByteArray())
+            val e = assertFailsWith<SigningException> {
+                HttpTimestampSource("http://127.0.0.1:${server.address.port}/").getTimeStampResponse(DigestAlgorithm.SHA256, digest)
+            }
+            assertEquals(SigningError.TIMESTAMP_REJECTED, e.error)
+        } finally {
+            server.stop(0)
         }
     }
 

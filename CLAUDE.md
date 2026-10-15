@@ -215,7 +215,8 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
 2. **Yapıldı, gerçek imzalı dosyayla denenmesi gerekiyor:** İmza doğrulama (Doğrula sekmesi), BTK yetkili ESHS
    kökleriyle gömülü güven listesi, 5070 nitelik kontrolü, `.imz` içeriğini açma/kaydetme.
 3. **Kısmen yapıldı:** PDF önizleme (`ui/PdfPreview.kt`, PDFBox ile sayfa sayfa) ve görünür imza
-   (`core/VisibleStamp.kt`: yazı ve/veya simge, kenar çubuğunda "PDF üzerinde"). Kullanıcı önizlemede sayfaya
+   (`core/VisibleStamp.kt`: yazı ve/veya simge, kenar çubuğunda "PDF üzerinde"). Yazı tipi gömülü Inter Regular
+   (`core/src/main/resources/fonts`, OFL), önizleme de aynı dosyayı kullanır; zaman damgalı seviyede mühür yeşil. Kullanıcı önizlemede sayfaya
    tıklayarak ya da kutuyu sürükleyerek yer seçer (dosya başına `AppState.stampPositions`); seçilmezse son sayfanın
    sağ altında önceki imzalarla çakışmayan ilk boş yer. Yazı kutusu genişliği metinden ölçülür (`VisibleStamp.size`),
    böylece DSS `FILL_BOX` kendi boşluğunu eklemez; simge ile yazı arasındaki boşluk simge PNG'sinin sağına eklenen

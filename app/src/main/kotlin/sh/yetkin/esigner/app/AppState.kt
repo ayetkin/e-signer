@@ -30,6 +30,8 @@ import sh.yetkin.esigner.core.PinStatus
 import sh.yetkin.esigner.core.SigningError
 import sh.yetkin.esigner.core.SignatureValidator
 import sh.yetkin.esigner.core.SigningException
+import sh.yetkin.esigner.core.TimestampAuth
+import sh.yetkin.esigner.core.HttpTimestampSource
 import sh.yetkin.esigner.core.StampPosition
 import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.VisibleStamp
@@ -143,7 +145,9 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         get() {
             val style = settings.stamp
             if (style == StampStyle.NONE) return null
-            return VisibleStamp(strings["stamp.label"].takeIf { style.text }, stampIcon.takeIf { style.icon }, settings.stampHeight)
+            // A green seal tells at a glance that the signature carries a timestamp.
+            val icon = if (settings.level.needsTimestamp) stampIconTimestamped else stampIcon
+            return VisibleStamp(strings["stamp.label"].takeIf { style.text }, icon.takeIf { style.icon }, settings.stampHeight)
         }
 
     val signerName: String get() = selectedCard?.holder?.commonName.orEmpty()
@@ -315,6 +319,21 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         settingsOpen = false
     }
 
+    /**
+     * Asks [source] for one timestamp to check the address and the credentials; null when it answers correctly.
+     * Clears [auth] afterwards.
+     */
+    suspend fun testTimestamp(source: HttpTimestampSource, auth: TimestampAuth): UiError? {
+        return try {
+            withContext(Dispatchers.IO) { source.test() }
+            null
+        } catch (e: SigningException) {
+            UiError.of(e)
+        } finally {
+            auth.clear()
+        }
+    }
+
     // About and updates
 
     var aboutOpen by mutableStateOf(false)
@@ -453,7 +472,10 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     }
 }
 
-internal val stampIcon: ByteArray by lazy { AppState::class.java.getResourceAsStream("/stamp-icon.png")!!.use { it.readBytes() } }
+internal val stampIcon: ByteArray by lazy { resource("/stamp-icon.png") }
+internal val stampIconTimestamped: ByteArray by lazy { resource("/stamp-icon-timestamped.png") }
+
+private fun resource(path: String) = AppState::class.java.getResourceAsStream(path)!!.use { it.readBytes() }
 
 /** A card scan normally takes well under a second; past this the module is considered hung. */
 private const val SCAN_TIMEOUT_MS = 10_000L

@@ -73,6 +73,8 @@ class DocumentSignerTest {
         val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", icon))
         val first = stamped.sign(input, SignatureFormat.PADES, token, key)
         val second = stamped.sign(first, SignatureFormat.PADES, token, key, File(dir, "twice.pdf"))
+        val raw = String(second.readBytes(), Charsets.ISO_8859_1)
+        assertTrue(raw.contains("Inter-Regular") && !raw.contains("PTSerif"), "the stamp text uses the bundled Inter font")
         PDDocument.load(second).use { doc ->
             assertTrue(doc.getPage(0).annotations.isEmpty())
             val rects = doc.getPage(1).annotations.map { it.rectangle }

@@ -8,6 +8,34 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-15
+
+### Added
+
+- The timestamp settings are saved only after the server gave one test timestamp, so a wrong address or password
+  shows in the settings window and not while signing. The Kamu SM address cannot be saved without the "Kamu SM customer"
+  authentication.
+- A download link for the AKİS card driver on the card selection screen when no card or reader is found.
+- A timestamp row in the sidebar: the server in use, a missing setup, or that none is used.
+- The signature icon on the PDF is green for timestamped signatures.
+- Verification shows the timestamp authority and an "Official timestamp" label (an intact timestamp from an
+  authorized provider).
+- Icons for each option in the sidebar's Format and On the PDF menus.
+
+### Changed
+
+- The text of visible signatures (Digitally signed, name, time) uses the Inter font.
+- The "None" timestamp authentication is gone: providers give no timestamps without credentials. The default
+  is "Kamu SM customer".
+- The help texts above the file list and the preview are gone.
+- The file list is narrower, and its header is as tall as the preview's.
+
+### Fixed
+
+- When the Kamu SM timestamp server sends an empty answer (no credentials set up), the error says the server
+  refused the request and to check the credentials, instead of "invalid answer".
+- Button labels are centered vertically on macOS.
+
 ## [0.5.0] - 2026-10-15
 
 ### Added
@@ -53,6 +81,7 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -189,7 +190,10 @@ fun PdfPreview(file: File, placement: StampPlacement?, modifier: Modifier) {
         },
         padding = PaddingValues(0.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = PANEL_HEADER_HEIGHT).padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -213,11 +217,11 @@ fun PdfPreview(file: File, placement: StampPlacement?, modifier: Modifier) {
                     Icon(AppIcons.OpenInNew, contentDescription = str("preview.open"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
-            if (placement != null && pdf != null) {
+            if (placement != null && pdf != null && !fits) {
                 Text(
-                    str(if (fits) "preview.stamp.hint" else "preview.stamp.invalid"),
+                    str("preview.stamp.invalid"),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (fits) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 2.dp, end = 12.dp),
                 )
             }
@@ -293,7 +297,7 @@ private fun ZoomControls(zoom: Float, onZoom: (Float) -> Unit) {
             Icon(AppIcons.Remove, contentDescription = str("preview.zoomOut"), modifier = Modifier.size(18.dp))
         }
         TextButton(onClick = { onZoom(1f) }) {
-            Text("${(zoom * 100).roundToInt()}%", style = MaterialTheme.typography.labelLarge)
+            Text("${(zoom * 100).roundToInt()}%")
         }
         IconButton(onClick = { onZoom(stepZoom(zoom, 1)) }, enabled = zoom < ZOOM_LEVELS.last()) {
             Icon(Icons.Default.Add, contentDescription = str("preview.zoomIn"), modifier = Modifier.size(18.dp))
@@ -536,8 +540,8 @@ private fun StampContent(stamp: StampOnPage, scale: Float, height: Float, accent
     }
 }
 
-/** The font DSS draws the stamp text with, so the preview's text is as wide as in the signed PDF. */
-private val StampFont = FontFamily(Font("dss-stamp-font", VisibleStamp.fontData))
+/** The font the signed PDF's stamp text uses, so the preview's text is as wide as in the PDF. */
+private val StampFont = FontFamily(Font("stamp-font", VisibleStamp.fontData))
 
 /** Widest page image in pixels; beyond it a zoomed page is scaled up instead of rendered larger. */
 private const val MAX_RENDER_PIXELS = 4096f

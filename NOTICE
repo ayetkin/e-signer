@@ -13,8 +13,11 @@ change their terms.
 
 - EU Digital Signature Service (DSS) 6.1, European Commission - GNU LGPL 2.1
   https://github.com/esig/dss
-  Used unmodified as separate libraries. It bundles the PT Serif font (ParaType, SIL Open Font
-  License 1.1), which E-Signer uses to draw the text of visible signatures.
+  Used unmodified as separate libraries.
+- Inter font 4.1, The Inter Project Authors - SIL Open Font License 1.1
+  https://github.com/rsms/inter
+  core/src/main/resources/fonts/Inter-Regular.ttf, unmodified, draws the text of visible signatures and
+  is embedded in signed PDFs. The license is next to it in Inter-LICENSE.txt.
 - Apache PDFBox 2.0 - Apache License 2.0
 - Bouncy Castle (bcprov, bcpkix) - MIT-style Bouncy Castle License
 - Kotlin standard library and kotlinx.coroutines, JetBrains - Apache License 2.0

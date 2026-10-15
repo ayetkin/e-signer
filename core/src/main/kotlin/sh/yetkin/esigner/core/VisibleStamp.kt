@@ -1,6 +1,8 @@
 package sh.yetkin.esigner.core
 
+import eu.europa.esig.dss.model.InMemoryDocument
 import eu.europa.esig.dss.pades.DSSFileFont
+import java.awt.Font
 import org.apache.pdfbox.pdmodel.PDDocument
 import java.awt.font.FontRenderContext
 import java.awt.image.BufferedImage
@@ -104,8 +106,8 @@ class VisibleStamp(val label: String?, val image: ByteArray?, val height: Float 
         private const val SAMPLE_SIZE = 10f
         private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
-        /** DSS's default font, the one it draws the text with. */
-        private val font by lazy { DSSFileFont.initializeDefault().javaFont }
+        /** The text's font: Inter Regular (SIL Open Font License 1.1, fonts/Inter-LICENSE.txt), embedded in the PDF. */
+        private val font by lazy { Font.createFont(Font.TRUETYPE_FONT, ByteArrayInputStream(fontData)) }
 
         private val DIGIT = Regex("[0-9]")
         private val widestDigit by lazy {
@@ -115,7 +117,10 @@ class VisibleStamp(val label: String?, val image: ByteArray?, val height: Float 
         }
 
         /** That font's file, so a preview can draw the text exactly as the signed PDF will. */
-        val fontData: ByteArray by lazy { DSSFileFont.initializeDefault().inputStream.use { it.readBytes() } }
+        val fontData: ByteArray by lazy { VisibleStamp::class.java.getResourceAsStream("/fonts/Inter-Regular.ttf")!!.use { it.readBytes() } }
+
+        /** The font for DSS, a new one per signature. */
+        internal fun dssFont() = DSSFileFont(InMemoryDocument(fontData, "Inter-Regular.ttf"))
     }
 }
 

@@ -12,7 +12,8 @@ import sh.yetkin.esigner.core.TimestampAuth
 import sh.yetkin.esigner.core.VisibleStamp
 import java.util.prefs.Preferences
 
-enum class TsaAuthType { NONE, BASIC, KAMU_SM }
+/** TSA credentials; every provider asks for them, so there is no type without authentication. */
+enum class TsaAuthType { KAMU_SM, BASIC }
 
 /** How the main window opens. */
 enum class WindowMode { MAXIMIZED, LAST, DEFAULT }
@@ -32,7 +33,7 @@ class SigningSettings(private val persist: Boolean = true) {
         private set
     var tsaUrl by mutableStateOf("")
         private set
-    var authType by mutableStateOf(TsaAuthType.NONE)
+    var authType by mutableStateOf(TsaAuthType.KAMU_SM)
         private set
     var user by mutableStateOf("")
         private set
@@ -101,6 +102,7 @@ class SigningSettings(private val persist: Boolean = true) {
     val missingTsa: Boolean
         get() = level.needsTimestamp && (
             tsaUrl.isBlank() ||
+                needsKamuSmAuth(tsaUrl, authType) ||
                 authType == TsaAuthType.BASIC && (user.isBlank() || !hasPassword) ||
                 authType == TsaAuthType.KAMU_SM && (user.toLongOrNull() == null || !hasPassword)
             )
@@ -122,7 +124,6 @@ class SigningSettings(private val persist: Boolean = true) {
             password = newPassword.takeIf { it.isNotEmpty() }?.copyOf()
             newPassword.fill('\u0000')
         }
-        if (authType == TsaAuthType.NONE) clearPassword()
         hasPassword = password != null
         if (persist) runCatching {
             prefs.put(LEVEL, level.name)
@@ -142,23 +143,35 @@ class SigningSettings(private val persist: Boolean = true) {
      * Credentials for one signing run, with their own copy of the password; the caller clears them
      * when the run ends. Null when no timestamp is needed.
      */
-    fun timestampFor(): Pair<HttpTimestampSource, TimestampAuth>? {
-        if (!level.needsTimestamp || missingTsa) return null
-        // missingTsa guarantees a password for the authenticated types.
+    fun timestampFor(): Pair<HttpTimestampSource, TimestampAuth>? =
+        if (!level.needsTimestamp || missingTsa) null else timestampFor(tsaUrl, authType, user, null)
+
+    /**
+     * Like [timestampFor], for values not saved yet (the settings dialog checks them before saving). [newPassword]
+     * is copied; without it the kept password is used. Null when the values are incomplete.
+     */
+    fun timestampFor(url: String, authType: TsaAuthType, user: String, newPassword: CharArray?): Pair<HttpTimestampSource, TimestampAuth>? {
+        if (url.isBlank() || needsKamuSmAuth(url, authType)) return null
+        val secret = (newPassword ?: password)?.takeIf { it.isNotEmpty() } ?: return null
         val auth = when (authType) {
-            TsaAuthType.NONE -> TimestampAuth.None
-            TsaAuthType.BASIC -> TimestampAuth.Basic(user, password!!.copyOf())
-            TsaAuthType.KAMU_SM -> TimestampAuth.KamuSm(user.toLong(), password!!.copyOf())
-        }
-        return HttpTimestampSource(tsaUrl, auth) to auth
+            TsaAuthType.BASIC -> user.trim().takeIf { it.isNotEmpty() }?.let { TimestampAuth.Basic(it, secret.copyOf()) }
+            TsaAuthType.KAMU_SM -> user.trim().toLongOrNull()?.let { TimestampAuth.KamuSm(it, secret.copyOf()) }
+        } ?: return null
+        return HttpTimestampSource(url.trim(), auth) to auth
     }
 
-    internal fun setForTest(level: SigningLevel, url: String = "", authType: TsaAuthType = TsaAuthType.NONE, user: String = "", password: String? = null) {
+    internal fun setForTest(level: SigningLevel, url: String = "", authType: TsaAuthType = TsaAuthType.KAMU_SM, user: String = "", password: String? = null) {
         update(level, url, authType, user, password?.toCharArray())
     }
 
     companion object {
         const val KAMU_SM_URL = "http://zd.kamusm.gov.tr"
+
+        /** Kamu SM's TSA answers only requests with its identity header, so its address needs the Kamu SM type. */
+        fun needsKamuSmAuth(url: String, authType: TsaAuthType): Boolean {
+            val host = runCatching { java.net.URI(url.trim()).host }.getOrNull()?.lowercase() ?: return false
+            return (host == "kamusm.gov.tr" || host.endsWith(".kamusm.gov.tr")) && authType != TsaAuthType.KAMU_SM
+        }
         val DEFAULT_WINDOW_SIZE = DpSize(1120.dp, 760.dp)
 
         /** The card screen is a small centered window; the workspace gets the size chosen above. */

@@ -18,7 +18,8 @@ import kotlin.test.Test
 /**
  * Renders the app icon to app/build/icon: icon-mac.png (1024 px with the macOS margin, input for
  * iconutil) and icon.png (full bleed, for Windows .ico). The results are copied to app/packaging.
- * Also renders stamp-icon.png, the seal drawn in visible signatures, copied to app/src/main/resources.
+ * Also renders stamp-icon.png and stamp-icon-timestamped.png, the seals drawn in visible signatures (blue, green
+ * when the signature gets a timestamp), copied to app/src/main/resources.
  */
 class IconTest {
     @OptIn(ExperimentalComposeUiApi::class)
@@ -37,12 +38,17 @@ class IconTest {
 
     @Test
     fun stampIcon() {
-        // A blue rosette seal with a white check mark, on a 48-unit grid scaled to 192 px.
+        stampIcon("stamp-icon.png", 0xFF1F6FD1.toInt())
+        stampIcon("stamp-icon-timestamped.png", 0xFF2F9E6A.toInt())
+    }
+
+    private fun stampIcon(name: String, sealColor: Int) {
+        // A rosette seal with a white check mark, on a 48-unit grid scaled to 192 px.
         val surface = Surface.makeRasterN32Premul(192, 192)
         surface.canvas.scale(4f, 4f)
         val seal = "M24 2l4.5 4 6-1 2.4 5.6 5.6 2.4-1 6 4 4.5-4 4.5 1 6-5.6 2.4-2.4 5.6-6-1L24 46l-4.5-4-6 1-2.4-5.6" +
             "L5.5 35l1-6-4-4.5 4-4.5-1-6 5.6-2.4L13.5 5l6 1z"
-        surface.canvas.drawPath(Path.makeFromSVGString(seal), Paint().apply { color = 0xFF1F6FD1.toInt(); isAntiAlias = true })
+        surface.canvas.drawPath(Path.makeFromSVGString(seal), Paint().apply { color = sealColor; isAntiAlias = true })
         surface.canvas.drawPath(
             Path.makeFromSVGString("M15 24.5l6 6 12-13"),
             Paint().apply {
@@ -55,6 +61,6 @@ class IconTest {
             },
         )
         val out = File("build/icon").apply { mkdirs() }
-        File(out, "stamp-icon.png").writeBytes(surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        File(out, name).writeBytes(surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG)!!.bytes)
     }
 }

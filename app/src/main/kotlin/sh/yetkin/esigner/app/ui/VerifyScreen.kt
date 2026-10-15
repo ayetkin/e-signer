@@ -231,7 +231,14 @@ private fun SignatureView(check: SignatureCheck) {
                 InfoRow(str("verify.issuer"), signer.issuerName)
             }
             check.claimedSigningTime?.let { InfoRow(str("verify.claimedTime"), formatDateTime(it)) }
-            InfoRow(str("verify.timestamp"), check.timestampTime?.let { formatDateTime(it) } ?: str("verify.noTimestamp"))
+            val timestamp = check.timestampTime
+            if (timestamp == null) {
+                InfoRow(str("verify.timestamp"), str("verify.noTimestamp"))
+            } else {
+                // An official timestamp proves the signing time; it stands out in green.
+                InfoRow(str("verify.timestamp"), formatDateTime(timestamp), if (check.trustedTimestamp) MaterialTheme.colorScheme.tertiary else null)
+                check.timestampAuthority?.let { InfoRow(str("verify.tsa"), it) }
+            }
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 when {
                     signer?.isQualified5070 == true -> Chip(str("verify.chip.qualified"), Tone.SUCCESS)
@@ -240,6 +247,10 @@ private fun SignatureView(check: SignatureCheck) {
                 }
                 if (check.trustedChain) Chip(str("verify.chip.trusted"), Tone.SUCCESS)
                 else Chip(str("verify.chip.untrusted"), Tone.WARNING)
+                when {
+                    check.trustedTimestamp -> Chip(str("verify.chip.officialTimestamp"), Tone.SUCCESS)
+                    timestamp != null -> Chip(str("verify.chip.untrustedTimestamp"), Tone.WARNING)
+                }
                 check.format?.let { Chip(it) }
             }
             if (check.messages.isNotEmpty()) {
@@ -273,7 +284,7 @@ private fun StatusIcon(icon: ImageVector, tone: Tone) {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun InfoRow(label: String, value: String, valueColor: Color? = null) {
     Row {
         Text(
             label,
@@ -281,7 +292,14 @@ private fun InfoRow(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 8.dp).width(150.dp),
         )
-        Text(value, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            color = valueColor ?: Color.Unspecified,
+            fontWeight = if (valueColor != null) FontWeight.SemiBold else null,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

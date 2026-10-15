@@ -135,6 +135,7 @@ class DocumentSigner(
             stamp.text(name, signingDate.toInstant())?.let {
                 textParameters = SignatureImageTextParameters().apply {
                     text = it
+                    font = VisibleStamp.dssFont()
                     textWrapping = TextWrapping.FILL_BOX
                     signerTextPosition = SignerTextPosition.RIGHT
                     padding = stamp.padding

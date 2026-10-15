@@ -55,6 +55,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import sh.yetkin.esigner.app.AppState
+import sh.yetkin.esigner.app.UiError
+import kotlinx.coroutines.launch
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.rememberCoroutineScope
 import sh.yetkin.esigner.app.ScanState
 import sh.yetkin.esigner.app.SettingsSection
 import sh.yetkin.esigner.app.SignFlow
@@ -91,19 +96,19 @@ fun SettingsDialog(state: AppState) {
     var password by remember { mutableStateOf("") }
     var clearKept by remember { mutableStateOf(false) }
     var library by remember { mutableStateOf(settings.libraryPath) }
+    // The TSA check after saving: running, and its error when the server refused or could not be reached.
+    var testing by remember { mutableStateOf(false) }
+    var tsaError by remember { mutableStateOf<UiError?>(null) }
+    var tsaIncomplete by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val kamuSmBlocked = SigningSettings.needsKamuSmAuth(url, auth)
 
     val close = {
         password = ""
         state.closeSettings()
     }
-    val save = {
-        val newPassword = when {
-            password.isNotEmpty() -> password.toCharArray()
-            clearKept -> CharArray(0)
-            else -> null
-        }
-        settings.update(level, url, auth, user, newPassword)
-        password = ""
+    // Everything except the timestamp server, which is saved only after it answered.
+    val saveOthers = {
         settings.updateStamp(stamp)
         settings.updateStampHeight(stampHeight)
         settings.updateWindowMode(windowMode)
@@ -112,7 +117,57 @@ fun SettingsDialog(state: AppState) {
             settings.updateLibraryPath(library)
             state.retryScan()
         }
-        state.closeSettings()
+    }
+    val save = save@{
+        tsaError = null
+        tsaIncomplete = false
+        if (kamuSmBlocked) {
+            state.settingsSection = SettingsSection.TIMESTAMP
+            return@save
+        }
+        val newPassword = when {
+            password.isNotEmpty() -> password.toCharArray()
+            clearKept -> CharArray(0)
+            else -> null
+        }
+        val tsaChanged = url.trim() != settings.tsaUrl || auth != settings.authType || user.trim() != settings.user || newPassword != null
+        // A timestamp server is saved only once it gave a timestamp with these credentials: when its values change,
+        // and when a timestamp level is chosen.
+        val check = (tsaChanged && (level.needsTimestamp || url.isNotBlank())) || (level.needsTimestamp && !settings.level.needsTimestamp)
+        if (!check) {
+            settings.update(level, url, auth, user, newPassword)
+            password = ""
+            saveOthers()
+            state.closeSettings()
+            return@save
+        }
+        val (source, credentials) = settings.timestampFor(url, auth, user, newPassword) ?: run {
+            newPassword?.fill('\u0000')
+            tsaIncomplete = true
+            state.settingsSection = SettingsSection.TIMESTAMP
+            return@save
+        }
+        // The values as they were when Save was clicked; the fields stay editable while the server answers.
+        val savedLevel = level
+        val savedUrl = url
+        val savedAuth = auth
+        val savedUser = user
+        testing = true
+        scope.launch {
+            val error = state.testTimestamp(source, credentials)
+            testing = false
+            if (error == null) {
+                settings.update(savedLevel, savedUrl, savedAuth, savedUser, newPassword)
+                password = ""
+                clearKept = false
+                saveOthers()
+                state.closeSettings()
+            } else {
+                newPassword?.fill('\u0000')
+                tsaError = error
+                state.settingsSection = SettingsSection.TIMESTAMP
+            }
+        }
     }
 
     Box(
@@ -198,6 +253,10 @@ fun SettingsDialog(state: AppState) {
                                 }
                                 SettingsSection.TIMESTAMP -> {
                                     if (!level.needsTimestamp) Banner(str("settings.tsa.unused"), Tone.INFO, Modifier.padding(bottom = 16.dp))
+                                    tsaError?.let {
+                                        Banner(str("settings.tsa.testFailed", errorText(it)), Tone.ERROR, Modifier.padding(bottom = 16.dp), it.detail)
+                                    }
+                                    if (tsaIncomplete) Banner(str("settings.tsa.incomplete"), Tone.ERROR, Modifier.padding(bottom = 16.dp))
                                     Group(str("settings.tsa.url")) {
                                         OutlinedTextField(
                                             value = url,
@@ -213,39 +272,40 @@ fun SettingsDialog(state: AppState) {
                                     }
                                     Group(str("settings.tsa.auth")) {
                                         Segmented(TsaAuthType.entries.map { it to str("settings.tsa.auth.${it.name}") }, auth) { auth = it }
-                                        if (auth != TsaAuthType.NONE) {
-                                            Spacer(Modifier.height(4.dp))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                OutlinedTextField(
-                                                    value = user,
-                                                    onValueChange = { value ->
-                                                        user = if (auth == TsaAuthType.KAMU_SM) value.filter(Char::isDigit) else value
-                                                    },
-                                                    label = { Text(str(if (auth == TsaAuthType.KAMU_SM) "settings.tsa.customerNumber" else "settings.tsa.user")) },
-                                                    singleLine = true,
-                                                    keyboardOptions = KeyboardOptions(
-                                                        keyboardType = if (auth == TsaAuthType.KAMU_SM) KeyboardType.Number else KeyboardType.Text,
-                                                    ),
-                                                    modifier = Modifier.weight(1f),
-                                                )
-                                                OutlinedTextField(
-                                                    value = password,
-                                                    onValueChange = { password = it },
-                                                    // Material shows a placeholder only while focused, so the label says a password is kept.
-                                                    label = {
-                                                        Text(str(if (settings.hasPassword && !clearKept) "settings.tsa.passwordKept" else "settings.tsa.password"))
-                                                    },
-                                                    singleLine = true,
-                                                    visualTransformation = PasswordVisualTransformation(),
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                                                    modifier = Modifier.weight(1f),
-                                                )
-                                            }
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Hint(str("settings.tsa.passwordHint"), Modifier.weight(1f))
-                                                if (settings.hasPassword && !clearKept) {
-                                                    TextButton(onClick = { clearKept = true; password = "" }) { Text(str("settings.tsa.forgetPassword")) }
-                                                }
+                                        if (kamuSmBlocked) {
+                                            Banner(str("settings.tsa.kamuSmNeedsAuth"), Tone.ERROR, Modifier.padding(top = 8.dp))
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            OutlinedTextField(
+                                                value = user,
+                                                onValueChange = { value ->
+                                                    user = if (auth == TsaAuthType.KAMU_SM) value.filter(Char::isDigit) else value
+                                                },
+                                                label = { Text(str(if (auth == TsaAuthType.KAMU_SM) "settings.tsa.customerNumber" else "settings.tsa.user")) },
+                                                singleLine = true,
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = if (auth == TsaAuthType.KAMU_SM) KeyboardType.Number else KeyboardType.Text,
+                                                ),
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            OutlinedTextField(
+                                                value = password,
+                                                onValueChange = { password = it },
+                                                // Material shows a placeholder only while focused, so the label says a password is kept.
+                                                label = {
+                                                    Text(str(if (settings.hasPassword && !clearKept) "settings.tsa.passwordKept" else "settings.tsa.password"))
+                                                },
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Hint(str("settings.tsa.passwordHint") + " " + str("settings.tsa.testHint"), Modifier.weight(1f))
+                                            if (settings.hasPassword && !clearKept) {
+                                                TextButton(onClick = { clearKept = true; password = "" }) { Text(str("settings.tsa.forgetPassword")) }
                                             }
                                         }
                                     }
@@ -287,7 +347,10 @@ fun SettingsDialog(state: AppState) {
             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = close) { Text(str("common.cancel")) }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = save) { Text(str("settings.save"), modifier = Modifier.padding(horizontal = 8.dp)) }
+                Button(onClick = save, enabled = !testing && !kamuSmBlocked) {
+                    if (testing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+                    Text(str(if (testing) "settings.tsa.testing" else "settings.save"), modifier = Modifier.padding(horizontal = 8.dp))
+                }
             }
         }
     }

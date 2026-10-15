@@ -67,6 +67,14 @@ class HttpTimestampSource(
         .build()
     private val random = SecureRandom()
 
+    /**
+     * Asks for a timestamp on random data to check the address and the credentials; throws [SigningException] like a
+     * signing run would. A paid service counts it as one timestamp.
+     */
+    fun test() {
+        getTimeStampResponse(DigestAlgorithm.SHA256, ByteArray(32).also(random::nextBytes))
+    }
+
     override fun getTimeStampResponse(digestAlgorithm: DigestAlgorithm, digest: ByteArray): TimestampBinary {
         val generator = TimeStampRequestGenerator().apply {
             setCertReq(true)
@@ -104,6 +112,10 @@ class HttpTimestampSource(
             else -> throw SigningException(SigningError.TIMESTAMP_FAILED, "HTTP ${response.statusCode()}", TsaResponseError(response))
         }
 
+        // Kamu SM answers a request without its identity header (no customer number set up) with an empty 200.
+        if (response.body().isEmpty()) {
+            throw SigningException(SigningError.TIMESTAMP_REJECTED, "empty answer", TsaResponseError(response))
+        }
         val timestamp = try {
             TimeStampResponse(response.body())
         } catch (e: Exception) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,8 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.SignFlow
-import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.stampIcon
+import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.SignatureFormat
 import sh.yetkin.esigner.core.formatFor
@@ -107,7 +109,7 @@ fun WorkspaceScreen(state: AppState, pickFiles: () -> Unit, saveFile: (File) -> 
                                 preview == null -> list(Modifier.fillMaxSize())
                                 // Side by side when there is room, otherwise the preview goes under the list.
                                 maxWidth >= SIDE_BY_SIDE_MIN_WIDTH -> Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    list(Modifier.weight(1.5f).fillMaxHeight())
+                                    list(Modifier.weight(1.2f).fillMaxHeight())
                                     key(preview) { PdfPreview(preview, stampPlacement(state, preview), Modifier.weight(3f).fillMaxHeight()) }
                                 }
                                 else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -168,7 +170,10 @@ private fun FileList(
         ),
         padding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)) {
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().heightIn(min = PANEL_HEADER_HEIGHT).padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
             // A narrow list keeps only the icon on the add button.
             val compact = maxWidth < COMPACT_HEADER_WIDTH
             Column {
@@ -188,12 +193,14 @@ private fun FileList(
                         }
                     }
                 }
-                Text(
-                    str(if (hovering) "files.dropNow" else "files.reviewHint"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (hovering) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp),
-                )
+                if (hovering) {
+                    Text(
+                        str("files.dropNow"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -318,7 +325,8 @@ private fun BottomBar(state: AppState) {
                 Icon(AppIcons.DrawFilled, contentDescription = null, modifier = Modifier.padding(start = 4.dp).size(18.dp))
                 Text(
                     if (count == 0) str("sign.button") else str("sign.buttonCount", count),
-                    style = MaterialTheme.typography.titleSmall,
+                    // Merged so the button's label nudge (see Buttons.kt) still applies.
+                    style = LocalTextStyle.current.merge(MaterialTheme.typography.titleSmall),
                     modifier = Modifier.padding(start = 8.dp, end = 12.dp),
                 )
             }
@@ -331,7 +339,9 @@ private fun BottomBar(state: AppState) {
 private fun stampPlacement(state: AppState, file: File): StampPlacement? {
     val stamp = state.visibleStamp ?: return null
     if (formatFor(file, state.mode) != SignatureFormat.PADES) return null
-    val icon = remember { Image.makeFromEncoded(stampIcon).toComposeImageBitmap() }
+    // The same seal the signature gets: green with a timestamp.
+    val iconBytes = stamp.image ?: stampIcon
+    val icon = remember(iconBytes) { Image.makeFromEncoded(iconBytes).toComposeImageBitmap() }
     return StampPlacement(
         stamp,
         state.signerName,

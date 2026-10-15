@@ -41,6 +41,13 @@ data class SignatureCheck(
      * ETSI policy only warns about this; later signatures and form fills do not count.
      */
     val modifiedAfterSigning: Boolean = false,
+    /** Common name of the time-stamping authority that issued the earliest timestamp. */
+    val timestampAuthority: String? = null,
+    /**
+     * The earliest timestamp is intact and its authority chains to one of the [TrustAnchors]: an official
+     * timestamp from an authorized provider, not one from an arbitrary server.
+     */
+    val trustedTimestamp: Boolean = false,
 ) {
     /**
      * A secure electronic signature in the sense of Law 5070: valid by ETSI rules, chained to a
@@ -85,6 +92,7 @@ class SignatureValidator(
             val signature = diagnostic.getSignatureById(id)
             val signingCertificate = signature?.signingCertificate?.binaries?.let(::parseCertificate)
             val indication = simple.getIndication(id)
+            val timestamp = signature?.timestampList?.filter { it.productionTime != null }?.minByOrNull { it.productionTime }
             SignatureCheck(
                 signer = signingCertificate?.let(CertificateInfo::from),
                 verdict = when (indication) {
@@ -95,7 +103,7 @@ class SignatureValidator(
                 subIndication = simple.getSubIndication(id)?.name,
                 trustedChain = signature?.certificateChain?.any { it.isTrusted } == true,
                 claimedSigningTime = signature?.claimedSigningTime?.toInstant(),
-                timestampTime = signature?.timestampList?.mapNotNull { it.productionTime?.toInstant() }?.minOrNull(),
+                timestampTime = timestamp?.productionTime?.toInstant(),
                 format = simple.getSignatureFormat(id)?.toString(),
                 messages = (simple.getAdESValidationErrors(id) + simple.getAdESValidationWarnings(id))
                     .map { it.value }.distinct(),
@@ -104,6 +112,9 @@ class SignatureValidator(
                         !signature.pdfUndefinedChanges.isNullOrEmpty() ||
                         !signature.pdfVisualDifferenceConcernedPages.isNullOrEmpty()
                     ),
+                timestampAuthority = timestamp?.signingCertificate?.commonName,
+                trustedTimestamp = timestamp != null && timestamp.isSignatureValid && timestamp.isMessageImprintDataIntact &&
+                    timestamp.certificateChain.any { it.isTrusted },
             )
         }
         val embedded = checks.isNotEmpty() && !file.extension.equals("pdf", ignoreCase = true) &&

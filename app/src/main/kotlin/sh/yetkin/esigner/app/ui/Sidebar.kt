@@ -103,15 +103,14 @@ private fun Sidebar(state: AppState) {
                 Caption(str("sidebar.signature"))
                 FormatRow(state)
                 StampRow(state)
-                val missing = state.settings.missingTsa
                 SidebarRow(
-                    icon = if (missing) AppIcons.ErrorOutline else AppIcons.Schedule,
+                    icon = AppIcons.VerifiedUserOutlined,
                     label = str("settings.level"),
-                    value = if (missing) str("level.tsaMissing") else levelSummary(state.settings),
-                    valueColor = if (missing) MaterialTheme.colorScheme.error else null,
+                    value = str("level.${state.settings.level.name}"),
                     enabled = state.flow == SignFlow.Idle,
-                    onClick = { state.openSettings(if (missing) SettingsSection.TIMESTAMP else SettingsSection.SIGNATURE) },
+                    onClick = { state.openSettings(SettingsSection.SIGNATURE) },
                 )
+                TimestampRow(state)
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -160,6 +159,7 @@ private fun SidebarRow(
     enabled: Boolean,
     onClick: () -> Unit,
     valueColor: Color? = null,
+    iconColor: Color? = null,
 ) {
     Row(
         Modifier
@@ -171,7 +171,7 @@ private fun SidebarRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = valueColor ?: MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = iconColor ?: valueColor ?: MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
@@ -194,21 +194,61 @@ private fun SidebarRow(
     }
 }
 
+/**
+ * The timestamp server: green when signatures get a timestamp, red when the level needs one that is not set up,
+ * "not used" at the standard level. Opens the timestamp settings.
+ */
+@Composable
+private fun TimestampRow(state: AppState) {
+    val settings = state.settings
+    val (value, color) = when {
+        !settings.level.needsTimestamp -> str("sidebar.tsa.unused") to null
+        settings.missingTsa -> str("level.tsaMissing") to MaterialTheme.colorScheme.error
+        else -> settings.tsaHost to null
+    }
+    SidebarRow(
+        icon = if (color != null) AppIcons.ErrorOutline else AppIcons.Schedule,
+        iconColor = if (settings.level.needsTimestamp && color == null) MaterialTheme.colorScheme.tertiary else null,
+        label = str("settings.section.TIMESTAMP"),
+        value = value,
+        valueColor = color,
+        enabled = state.flow == SignFlow.Idle,
+        onClick = { state.openSettings(SettingsSection.TIMESTAMP) },
+    )
+}
+
 /** Format choice as a row that opens a menu; each option carries its explanation. */
 @Composable
 private fun FormatRow(state: AppState) =
-    ChoiceRow(AppIcons.Description, str("format.label"), listOf(FormatMode.AUTO, FormatMode.CADES_ONLY), state.mode, ::formatKey, state) {
+    ChoiceRow(
+        AppIcons.Description, str("format.label"), listOf(FormatMode.AUTO, FormatMode.CADES_ONLY), state.mode, ::formatKey,
+        { if (it == FormatMode.AUTO) AppIcons.PictureAsPdf else AppIcons.Description }, state,
+    ) {
         state.mode = it
     }
 
 /** What signed PDFs show: nothing, a text, an icon, or both. */
 @Composable
 private fun StampRow(state: AppState) =
-    ChoiceRow(AppIcons.DrawOutlined, str("stamp.setting"), StampStyle.entries, state.settings.stamp, { "stamp.${it.name}" }, state) {
+    ChoiceRow(
+        AppIcons.DrawOutlined, str("stamp.setting"), StampStyle.entries, state.settings.stamp, { "stamp.${it.name}" },
+        {
+            when (it) {
+                StampStyle.NONE -> AppIcons.VisibilityOff
+                StampStyle.TEXT -> AppIcons.TextFields
+                StampStyle.ICON -> AppIcons.Verified
+                StampStyle.ICON_TEXT -> AppIcons.DrawOutlined
+            }
+        },
+        state,
+    ) {
         state.settings.updateStamp(it)
     }
 
-/** A row that opens a menu of [options]; [key] gives each option's string key, with "<key>.hint" under it. */
+/**
+ * A row that opens a menu of [options]; [key] gives each option's string key, with "<key>.hint" under it, and
+ * [optionIcon] the icon in front of it. The chosen option has a check mark at the end.
+ */
 @Composable
 private fun <T> ChoiceRow(
     icon: ImageVector,
@@ -216,6 +256,7 @@ private fun <T> ChoiceRow(
     options: List<T>,
     selected: T,
     key: (T) -> String,
+    optionIcon: (T) -> ImageVector,
     state: AppState,
     onSelect: (T) -> Unit,
 ) {
@@ -238,6 +279,9 @@ private fun <T> ChoiceRow(
                         }
                     },
                     leadingIcon = {
+                        Icon(optionIcon(option), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    },
+                    trailingIcon = {
                         Box(Modifier.size(18.dp)) {
                             if (selected == option) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         }
