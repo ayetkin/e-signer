@@ -53,6 +53,11 @@ authorities and fiscal seal cards also need wider testing. If you try it on thes
 > qualified certificate and the key on your card, not because of this software. Check the signed
 > files with the tools your counterparties rely on before using it for anything important.
 > The software is provided without any warranty (see [LICENSE](LICENSE)).
+>
+> The "valid" verdict of the Verify tab has no legal force. It is a technical preliminary check, not an
+> official determination. Turkey has no official status like the "qualified validation service" of eIDAS.
+> In a dispute, the court has the signature examined by an expert witness; the app's screen is not
+> evidence. The same applies to Adobe Reader and other signature tools.
 
 ## Building and running
 

@@ -44,6 +44,15 @@ class SigningSettings(private val persist: Boolean = true) {
     var stampHeight by mutableStateOf(VisibleStamp.DEFAULT_HEIGHT)
         private set
 
+    /**
+     * Optional /Reason and /Location written into PDF signatures; empty leaves them out (the signer trims them).
+     * [reason] null means the default text in the app's language, so it follows a language change.
+     */
+    var reason by mutableStateOf<String?>(null)
+        private set
+    var location by mutableStateOf("")
+        private set
+
     var libraryPath by mutableStateOf(Pkcs11Library.defaultPath())
         private set
     var windowMode by mutableStateOf(WindowMode.MAXIMIZED)
@@ -65,6 +74,8 @@ class SigningSettings(private val persist: Boolean = true) {
             stamp = StampStyle.entries.firstOrNull { it.name == prefs.get(STAMP, null) } ?: stamp
             stampHeight = prefs.getFloat(STAMP_HEIGHT, stampHeight).coerceIn(VisibleStamp.MIN_HEIGHT, VisibleStamp.MAX_HEIGHT)
             libraryPath = prefs.get(LIBRARY, libraryPath)
+            reason = prefs.get(REASON, null)
+            location = prefs.get(LOCATION, "")
             windowMode = WindowMode.entries.firstOrNull { it.name == prefs.get(WINDOW_MODE, null) } ?: windowMode
             lastWindowSize = DpSize(prefs.getInt(WINDOW_WIDTH, 1120).dp, prefs.getInt(WINDOW_HEIGHT, 760).dp)
         }
@@ -73,6 +84,16 @@ class SigningSettings(private val persist: Boolean = true) {
     fun updateStamp(value: StampStyle) {
         stamp = value
         if (persist) runCatching { prefs.put(STAMP, value.name) }
+    }
+
+    /** A [reason] that is the [defaultReason] (spaces aside) is kept as the default, not as fixed text. */
+    fun updatePdfDetails(reason: String, location: String, defaultReason: String) {
+        this.reason = reason.takeUnless { it.trim() == defaultReason }
+        this.location = location
+        if (persist) runCatching {
+            this.reason?.let { prefs.put(REASON, it) } ?: prefs.remove(REASON)
+            prefs.put(LOCATION, this.location)
+        }
     }
 
     fun updateStampHeight(value: Float) {
@@ -183,6 +204,8 @@ class SigningSettings(private val persist: Boolean = true) {
         private const val USER = "tsaUser"
         private const val STAMP = "pdfStamp"
         private const val STAMP_HEIGHT = "pdfStampHeight"
+        private const val REASON = "pdfReason"
+        private const val LOCATION = "pdfLocation"
         private const val LIBRARY = "pkcs11Library"
         private const val WINDOW_MODE = "windowMode"
         private const val WINDOW_WIDTH = "windowWidth"

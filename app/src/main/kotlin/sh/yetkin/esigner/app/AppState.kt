@@ -334,6 +334,12 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         }
     }
 
+    /** That the PDF was signed with E-Signer, in the app's language. */
+    val defaultReason: String get() = strings["settings.pdfDetails.defaultReason"]
+
+    /** The /Reason of PDF signatures: the user's text, or [defaultReason]. */
+    val reason: String get() = settings.reason ?: defaultReason
+
     // About and updates
 
     var aboutOpen by mutableStateOf(false)
@@ -382,6 +388,8 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         }
         flow = SignFlow.Confirm(verifying = true)
         val library = settings.libraryPath
+        val reason = this.reason
+        val location = settings.location
         val padesSuffix = strings["output.padesSuffix"]
         val jobs = files.map { it to formatFor(it, mode) }
         val level = settings.level
@@ -411,7 +419,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
             val results = mutableListOf<FileResult>()
             try {
                 val key = session.keys[session.preferredKeyIndex]
-                val signer = DocumentSigner(level, timestamp?.first, stamp = stamp)
+                val signer = DocumentSigner(level, timestamp?.first, stamp = stamp, reason = reason, location = location)
                 var batchStopped = false
                 for ((index, job) in jobs.withIndex()) {
                     val (input, format) = job

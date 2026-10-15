@@ -53,6 +53,11 @@ kullanım da daha geniş test gerektiriyor. Bu sistemlerde deneyip sonucu
 > değil, kartınızdaki nitelikli sertifika ve anahtardır. Önemli işlerde kullanmadan önce imzalı
 > dosyaları karşı tarafın güvendiği araçlarla kontrol edin. Yazılım hiçbir garanti olmaksızın
 > sunulur (bkz. [LICENSE](LICENSE)).
+>
+> Doğrulama sekmesinin verdiği "geçerli" kararının hukuki bir bağlayıcılığı yoktur. Bu karar resmi bir
+> tespit değil, teknik bir ön kontroldür. Türkiye'de eIDAS'taki "nitelikli doğrulama hizmeti" gibi resmi
+> bir statü yoktur. Uyuşmazlık çıkarsa mahkeme imzayı bilirkişiye inceletir, uygulamanın ekranı delil
+> yerine geçmez. Aynı durum Adobe Reader ve diğer imza araçları için de geçerlidir.
 
 ## Derleme ve çalıştırma
 

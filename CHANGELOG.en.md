@@ -8,13 +8,6 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
-## [0.5.2] - 2026-10-15
-
-### Fixed
-
-- A text-only visible signature has the same space left and right of the text: the box follows the actual
-  signing time and DSS's own text metrics.
-
 ## [0.5.1] - 2026-10-15
 
 ### Added
@@ -28,6 +21,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 - Verification shows the timestamp authority and an "Official timestamp" label (an intact timestamp from an
   authorized provider).
 - Icons for each option in the sidebar's Format and On the PDF menus.
+- "Reason" and "Location" in Settings > Signature: written into PDF signatures and shown in PDF readers'
+  signature panels. The reason is "Signed with E-Signer" by default; it can be changed or removed.
 
 ### Changed
 
@@ -36,12 +31,16 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
   is "Kamu SM customer".
 - The help texts above the file list and the preview are gone.
 - The file list is narrower, and its header is as tall as the preview's.
+- The settings window is wider and taller.
 
 ### Fixed
 
 - When the Kamu SM timestamp server sends an empty answer (no credentials set up), the error says the server
   refused the request and to check the credentials, instead of "invalid answer".
 - Button labels are centered vertically on macOS.
+- A text-only visible signature has the same space left and right of the text: the box follows the actual
+  signing time and DSS's own text metrics.
+- The icon in message boxes lines up with the first line of text.
 
 ## [0.5.0] - 2026-10-15
 
@@ -88,8 +87,7 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
-[0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1

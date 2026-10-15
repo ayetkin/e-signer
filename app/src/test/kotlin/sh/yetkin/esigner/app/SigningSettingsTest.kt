@@ -2,12 +2,28 @@ package sh.yetkin.esigner.app
 
 import sh.yetkin.esigner.core.SigningLevel
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SigningSettingsTest {
+    @Test
+    fun `the default reason follows the language until the user writes another`() {
+        val settings = SigningSettings(persist = false)
+        assertNull(settings.reason, "no reason saved: the default is used")
+        settings.updatePdfDetails(" Signed with E-Signer ", "", "Signed with E-Signer")
+        assertNull(settings.reason, "the untouched default stays the default")
+        settings.updatePdfDetails("Approved", "Istanbul", "Signed with E-Signer")
+        assertEquals("Approved", settings.reason)
+        assertEquals("Istanbul", settings.location)
+        settings.updatePdfDetails("Signed with E-Signer", "", "Signed with E-Signer")
+        assertNull(settings.reason, "typing the default again restores it")
+        settings.updatePdfDetails("", "", "Signed with E-Signer")
+        assertEquals("", settings.reason, "an empty reason leaves it out of the PDF")
+    }
+
     @Test
     fun `kamu sm needs its own authentication`() {
         assertTrue(SigningSettings.needsKamuSmAuth("https://ZD.kamusm.gov.tr/", TsaAuthType.BASIC))

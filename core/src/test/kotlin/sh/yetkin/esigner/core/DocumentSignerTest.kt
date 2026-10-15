@@ -17,6 +17,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DocumentSignerTest {
@@ -87,6 +88,22 @@ class DocumentSignerTest {
             // For a visual check of the layout.
             File("build/stamp").mkdirs()
             ImageIO.write(PDFRenderer(doc).renderImageWithDPI(1, 220f).getSubimage(900, 2100, 970, 270), "png", File("build/stamp/stamp.png"))
+        }
+    }
+
+    @Test
+    fun `pdf signature carries reason and location only when given`() {
+        val with = DocumentSigner(reason = " Approved ", location = "Istanbul").sign(pdf(), SignatureFormat.PADES, token, key)
+        PDDocument.load(with).use { doc ->
+            val signature = doc.signatureDictionaries.single()
+            assertEquals("Approved", signature.reason)
+            assertEquals("Istanbul", signature.location)
+        }
+        val without = DocumentSigner(reason = " ", location = null).sign(pdf(), SignatureFormat.PADES, token, key, File(dir, "plain.pdf"))
+        PDDocument.load(without).use { doc ->
+            val signature = doc.signatureDictionaries.single()
+            assertNull(signature.reason)
+            assertNull(signature.location)
         }
     }
 

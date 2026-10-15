@@ -51,6 +51,9 @@ class DocumentSigner(
     private val verifier: CertificateVerifier =
         certificateVerifier(TrustAnchors.bundled(), online = level == SigningLevel.BASELINE_LT),
     private val stamp: VisibleStamp? = null,
+    /** Optional /Reason and /Location of PDF signatures, shown in PDF readers' signature panels; blank is left out. */
+    private val reason: String? = null,
+    private val location: String? = null,
 ) {
     private val digestAlgorithm = DigestAlgorithm.SHA256
 
@@ -107,6 +110,8 @@ class DocumentSigner(
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
         imageParameters = stamp?.let { visibleWidget(it, key, bLevel().signingDate, input, stampAt) } ?: invisibleWidget(input)
+        this@DocumentSigner.reason?.trim()?.takeIf { it.isNotEmpty() }?.let { reason = it }
+        this@DocumentSigner.location?.trim()?.takeIf { it.isNotEmpty() }?.let { location = it }
     }
 
     /**

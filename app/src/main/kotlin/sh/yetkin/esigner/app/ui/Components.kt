@@ -40,6 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -131,6 +134,9 @@ fun Chip(text: String, tone: Tone = Tone.INFO) {
 @Composable
 fun Banner(text: String, tone: Tone, modifier: Modifier = Modifier, detail: String? = null) {
     val (bg, fg) = toneColors(tone)
+    val style = MaterialTheme.typography.bodyMedium
+    // Half a capital's height above the baseline, about 0.35 of the font size.
+    val capMiddle = with(LocalDensity.current) { (style.fontSize.toPx() * 0.35f).roundToInt() }
     Column(modifier.fillMaxWidth().background(bg, MaterialTheme.shapes.medium).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(
@@ -141,9 +147,11 @@ fun Banner(text: String, tone: Tone, modifier: Modifier = Modifier, detail: Stri
                 },
                 contentDescription = null,
                 tint = fg,
-                modifier = Modifier.size(18.dp),
+                // Lined up on the text's baseline, not its line box: the icon's middle sits at the middle of the
+                // first line's capitals whatever line height the font reports.
+                modifier = Modifier.size(18.dp).alignBy { it.measuredHeight / 2 + capMiddle },
             )
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = fg, modifier = Modifier.weight(1f))
+            Text(text, style = style, color = fg, modifier = Modifier.weight(1f).alignBy(FirstBaseline))
         }
         if (detail != null) ErrorDetails(detail, fg, Modifier.padding(start = 28.dp, top = 6.dp))
     }

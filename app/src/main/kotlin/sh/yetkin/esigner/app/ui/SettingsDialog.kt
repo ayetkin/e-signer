@@ -89,6 +89,8 @@ fun SettingsDialog(state: AppState) {
     var level by remember { mutableStateOf(settings.level) }
     var stamp by remember { mutableStateOf(settings.stamp) }
     var stampHeight by remember { mutableStateOf(settings.stampHeight) }
+    var reason by remember { mutableStateOf(state.reason) }
+    var location by remember { mutableStateOf(settings.location) }
     var url by remember { mutableStateOf(settings.tsaUrl) }
     var auth by remember { mutableStateOf(settings.authType) }
     var user by remember { mutableStateOf(settings.user) }
@@ -111,6 +113,8 @@ fun SettingsDialog(state: AppState) {
     val saveOthers = {
         settings.updateStamp(stamp)
         settings.updateStampHeight(stampHeight)
+        // Compared with the default before a language change below, the default stays the default.
+        settings.updatePdfDetails(reason, location, state.defaultReason)
         settings.updateWindowMode(windowMode)
         if (language != state.language) state.switchLanguage(language)
         if (library.trim() != settings.libraryPath) {
@@ -178,7 +182,7 @@ fun SettingsDialog(state: AppState) {
             .onPreviewKeyEvent { if (it.key == Key.Escape) { close(); true } else false },
         contentAlignment = Alignment.Center,
     ) {
-        Panel(Modifier.padding(24.dp).widthIn(max = 780.dp).fillMaxWidth().heightIn(max = 600.dp), padding = PaddingValues(0.dp)) {
+        Panel(Modifier.padding(24.dp).widthIn(max = 940.dp).fillMaxWidth().heightIn(max = 720.dp), padding = PaddingValues(0.dp)) {
             Row(Modifier.weight(1f, fill = false).heightIn(min = 420.dp)) {
                 Column(
                     Modifier.width(200.dp).fillMaxHeight().background(LocalExtraColors.current.sidebar).padding(10.dp),
@@ -249,6 +253,23 @@ fun SettingsDialog(state: AppState) {
                                                 )
                                             }
                                         }
+                                    }
+                                    Group(str("settings.pdfDetails")) {
+                                        OutlinedTextField(
+                                            value = reason,
+                                            onValueChange = { reason = it },
+                                            label = { Text(str("settings.pdfDetails.reason")) },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                        OutlinedTextField(
+                                            value = location,
+                                            onValueChange = { location = it },
+                                            label = { Text(str("settings.pdfDetails.location")) },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                        Hint(str("settings.pdfDetails.hint"))
                                     }
                                 }
                                 SettingsSection.TIMESTAMP -> {

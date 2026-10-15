@@ -253,7 +253,12 @@ class ScreenshotTest {
                 settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.BASIC)
                 openSettings(SettingsSection.TIMESTAMP)
             })
-            shot("$l-18-settings-signature", state(lang) { ready(); files.addAll(sampleFiles()); openSettings(SettingsSection.SIGNATURE) })
+            shot("$l-18-settings-signature", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                settings.updatePdfDetails(defaultReason, "Istanbul", defaultReason)
+                openSettings(SettingsSection.SIGNATURE)
+            })
             shot("$l-18b-settings-general", state(lang) { ready(); openSettings() })
             shot("$l-18c-settings-card", state(lang) { ready(); openSettings(SettingsSection.CARD) })
             shot("$l-18e-settings-on-card-screen", state(lang) { openSettings(SettingsSection.CARD) })

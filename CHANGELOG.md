@@ -8,13 +8,6 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
-## [0.5.2] - 2026-10-15
-
-### Düzeltilenler
-
-- Yalnızca yazılı görünür imzada yazının solunda ve sağında aynı boşluk kalır; kutu, imza zamanının gerçek
-  genişliğine ve DSS'in yazı ölçülerine göre hesaplanır.
-
 ## [0.5.1] - 2026-10-15
 
 ### Eklenenler
@@ -28,6 +21,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Doğrulamada zaman damgasını veren sağlayıcı ve "Resmi zaman damgası" etiketi (damga geçerli ve yetkili bir
   sağlayıcıdan).
 - Kenar çubuğundaki Biçim ve PDF üzerinde menülerinde her seçeneğin simgesi.
+- Ayarlar > İmza'da "İmza nedeni" ve "Konum": PDF imzasına yazılır, PDF okuyucunun imza panelinde görünür.
+  İmza nedeni varsayılan olarak "E-Signer ile imzalanmıştır"; değiştirilebilir ya da silinebilir.
 
 ### Değişenler
 
@@ -36,12 +31,16 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
   vermiyor. Varsayılan "Kamu SM müşterisi".
 - Dosya listesindeki ve önizlemedeki açıklama yazıları kaldırıldı.
 - Dosya listesi daha dar; listenin ve önizlemenin başlıkları aynı yükseklikte.
+- Ayarlar penceresi daha geniş ve daha yüksek.
 
 ### Düzeltilenler
 
 - Kamu SM zaman damgası sunucusu kullanıcı bilgisi olmadan boş yanıt verdiğinde "geçersiz yanıt" yerine
   "sunucu isteği reddetti, kimlik bilgilerini kontrol edin" hatası gösterilir.
 - macOS'ta düğme yazıları dikeyde ortalanır.
+- Yalnızca yazılı görünür imzada yazının solunda ve sağında aynı boşluk kalır; kutu, imza zamanının gerçek
+  genişliğine ve DSS'in yazı ölçülerine göre hesaplanır.
+- Uyarı kutularındaki simge yazının ilk satırıyla aynı hizada.
 
 ## [0.5.0] - 2026-10-15
 
@@ -87,8 +86,7 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
-[0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.1...HEAD
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ayetkin/e-signer/releases/tag/v0.4.1
