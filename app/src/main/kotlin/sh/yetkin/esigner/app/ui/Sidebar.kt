@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -42,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import sh.yetkin.esigner.app.AppState
 import sh.yetkin.esigner.app.SettingsSection
@@ -51,7 +49,6 @@ import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.UpdateCheck
 import sh.yetkin.esigner.app.Updates
-import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.FormatMode
 
@@ -101,7 +98,7 @@ private fun Sidebar(state: AppState) {
             }
 
             if (state.tab == Tab.SIGN) {
-                Caption(str("sidebar.signature"))
+                Caption(str("sidebar.signature"), Modifier.padding(start = 10.dp, top = 24.dp, bottom = 4.dp))
                 FormatRow(state)
                 StampRow(state)
                 SidebarRow(
@@ -168,17 +165,6 @@ private fun NavItem(icon: ImageVector, selectedIcon: ImageVector, label: String,
         Icon(if (selected) selectedIcon else icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = if (selected) FontWeight.Medium else null)
     }
-}
-
-@Composable
-private fun Caption(text: String, top: Dp = 24.dp) {
-    Text(
-        text.uppercase(LocalStrings.current.language.locale),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 10.dp, top = top, bottom = 4.dp),
-    )
 }
 
 /** An icon, a small label with the current value under it, and a chevron; the whole row is the button. */
@@ -335,7 +321,7 @@ private fun formatKey(mode: FormatMode) = if (mode == FormatMode.AUTO) "format.a
 private fun CardHeader(state: AppState) {
     val canChange = state.flow !is SignFlow.Signing
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) { Caption(str("sidebar.card"), top = 8.dp) }
+        Box(Modifier.weight(1f)) { Caption(str("sidebar.card"), Modifier.padding(start = 10.dp, top = 8.dp, bottom = 4.dp)) }
         if (canChange) {
             val color = MaterialTheme.colorScheme.primary
             Row(
@@ -388,26 +374,13 @@ private fun CardRow(state: AppState) {
             },
     ) {
         if (card == null) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        str(if (state.selectedSlot == null) "card.none" else "card.removed"),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = extra.onWarningContainer,
-                    )
-                    Text(str("card.insertHint"), style = MaterialTheme.typography.bodySmall, color = extra.onWarningContainer)
-                }
-            }
+            CardWarningBody(str(if (state.selectedSlot == null) "card.none" else "card.removed"), str("card.insertHint"))
             return@Column
         }
         val holder = card.holder
         val name = cardName(card)
         val kind = cardKind(card)
-        val (status, statusColor, ready) = cardStatus(card)
+        val ready = cardStatus(card).third
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Avatar(name, 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -423,7 +396,7 @@ private fun CardRow(state: AppState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            StatusLine(status, statusColor, if (ready) colors.onSurface else statusColor, Modifier.weight(1f))
+            CardStatusLine(card, Modifier.weight(1f))
             // A warning takes the whole line; the expiry date is shown while all is well.
             if (ready && holder != null) {
                 Text(str("card.expires", formatDate(holder.notAfter)), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1)

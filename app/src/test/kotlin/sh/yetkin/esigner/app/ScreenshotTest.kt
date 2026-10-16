@@ -275,6 +275,13 @@ class ScreenshotTest {
             shot("$l-18e-settings-on-card-screen", state(lang) { openSettings(SettingsSection.CARD) })
             shot("$l-22-about", state(lang) { ready(); openAbout() })
             shot("$l-22b-about-update", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Available("0.5.0") })
+            shot("$l-22c-about-checking", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Checking })
+            shot("$l-22d-about-failed", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Failed })
+            shot("$l-18f-settings-no-card", state(lang) {
+                ready()
+                scan = ScanState.Ready(CardScan(1, emptyList()))
+                openSettings(SettingsSection.CARD)
+            })
             shot("$l-19-workspace-tsa-missing", state(lang) {
                 ready()
                 files.addAll(sampleFiles())

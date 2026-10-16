@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,9 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
-import sh.yetkin.esigner.app.i18n.LocalStrings
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -442,9 +441,10 @@ private fun Group(title: String, action: (@Composable () -> Unit)? = null, conte
         if (action == null) {
             Text(title, style = MaterialTheme.typography.labelLarge)
         } else {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // The row keeps the title line's height; the taller button overflows it evenly on both sides.
+            Row(Modifier.fillMaxWidth().height(18.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                action()
+                Box(Modifier.requiredHeight(32.dp), contentAlignment = Alignment.Center) { action() }
             }
         }
         content()
@@ -484,23 +484,12 @@ private fun <T> OptionList(options: List<T>, selected: T, key: (T) -> String, on
 @Composable
 private fun EmptyCardTile(title: String, body: String) {
     val extra = LocalExtraColors.current
-    Row(
+    Box(
         Modifier
             .fillMaxWidth()
             .background(extra.warningContainer, MaterialTheme.shapes.large)
-            .border(1.dp, extra.warning.copy(alpha = 0.3f), MaterialTheme.shapes.large)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = extra.onWarningContainer)
-            Text(body, style = MaterialTheme.typography.bodySmall, color = extra.onWarningContainer)
-        }
-    }
+            .border(1.dp, extra.warning.copy(alpha = 0.3f), MaterialTheme.shapes.large),
+    ) { CardWarningBody(title, body) }
 }
 
 /**
@@ -513,7 +502,6 @@ private fun CardDetails(card: DetectedCard, selected: Boolean) {
     val holder = card.holder
     val name = cardName(card)
     val kind = cardKind(card)
-    val (status, statusColor, ready) = cardStatus(card)
     Column(
         Modifier
             .fillMaxWidth()
@@ -526,7 +514,7 @@ private fun CardDetails(card: DetectedCard, selected: Boolean) {
                 if (kind.isNotBlank()) Text(kind, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (selected) Chip(str("settings.card.selected"), Tone.INFO)
-            StatusLine(status, statusColor, if (ready) colors.onSurface else statusColor)
+            CardStatusLine(card)
         }
         HorizontalDivider(color = colors.outlineVariant)
         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -543,7 +531,11 @@ private fun CardDetails(card: DetectedCard, selected: Boolean) {
                         PinStatus.FINAL_TRY -> str("pin.finalTry")
                         PinStatus.LOCKED -> str("pin.locked")
                     },
-                    if (card.pinStatus == PinStatus.OK) null else statusColor,
+                    when (card.pinStatus) {
+                        PinStatus.OK -> null
+                        PinStatus.COUNT_LOW -> LocalExtraColors.current.warning
+                        else -> colors.error
+                    },
                 )
             }
             DetailColumn(AppIcons.VerifiedUserOutlined, str("settings.card.certificate"), Modifier.weight(1f)) {
@@ -569,19 +561,11 @@ private fun CardDetails(card: DetectedCard, selected: Boolean) {
     }
 }
 
-/** A captioned column of details, the caption in the sidebar's small capitals with an icon. */
+/** A captioned column of details. */
 @Composable
 private fun DetailColumn(icon: ImageVector, caption: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-            Text(
-                caption.uppercase(LocalStrings.current.language.locale),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Caption(caption, icon = icon)
         content()
     }
 }

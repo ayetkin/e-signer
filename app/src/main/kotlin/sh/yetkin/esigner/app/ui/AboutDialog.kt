@@ -104,7 +104,7 @@ fun AboutDialog(state: AppState) {
 private fun AboutRow(
     icon: ImageVector,
     label: String,
-    value: String,
+    value: String?,
     note: String? = null,
     valueColor: Color? = null,
     onClick: (() -> Unit)? = null,
@@ -123,7 +123,7 @@ private fun AboutRow(
         Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = valueColor ?: colors.onSurface)
+            if (value != null) Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = valueColor ?: colors.onSurface)
             if (note != null) Text(note, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
         trailing()
@@ -135,13 +135,14 @@ private fun AboutRow(
 private fun UpdateRow(state: AppState) {
     val check = state.updateCheck
     val (text, color) = when (check) {
-        UpdateCheck.Idle -> str("about.update.idle") to null
+        UpdateCheck.Idle -> null to null
         UpdateCheck.Checking -> str("about.update.checking") to null
         UpdateCheck.UpToDate -> str("about.update.upToDate") to MaterialTheme.colorScheme.tertiary
         is UpdateCheck.Available -> str("about.update.available", check.version) to MaterialTheme.colorScheme.primary
         UpdateCheck.Failed -> str("about.update.failed") to MaterialTheme.colorScheme.error
     }
-    AboutRow(AppIcons.Download, str("settings.updates"), text, valueColor = color) {
+    // Before any check the row explains when updates are looked up; afterwards it shows the result.
+    AboutRow(AppIcons.Download, str("settings.updates"), text, note = if (check == UpdateCheck.Idle) str("about.update.idle") else null, valueColor = color) {
         when (check) {
             UpdateCheck.Checking -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             is UpdateCheck.Available -> Button(onClick = { openLink(Updates.RELEASES_URL) }) { Text(str("about.update.download")) }

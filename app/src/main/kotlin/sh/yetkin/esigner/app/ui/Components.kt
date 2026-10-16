@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -329,12 +330,42 @@ fun cardStatus(card: DetectedCard): Triple<String, Color, Boolean> {
     }
 }
 
-/** A colored dot with the status text next to it. */
+/** The card's status as a colored dot and text; the text keeps the plain color while the card is ready. */
 @Composable
-fun StatusLine(text: String, color: Color, textColor: Color = color, modifier: Modifier = Modifier) {
+fun CardStatusLine(card: DetectedCard, modifier: Modifier = Modifier) {
+    val (text, color, ready) = cardStatus(card)
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.size(8.dp).background(color, CircleShape))
-        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = textColor)
+        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = if (ready) MaterialTheme.colorScheme.onSurface else color)
+    }
+}
+
+/** The amber card warning (no reader, no card): the card icon in a circle, a title and a line under it. */
+@Composable
+fun CardWarningBody(title: String, body: String) {
+    val extra = LocalExtraColors.current
+    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = extra.onWarningContainer)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = extra.onWarningContainer)
+        }
+    }
+}
+
+/** Section caption in small capitals, with an optional icon in front. */
+@Composable
+fun Caption(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+        Text(
+            text.uppercase(LocalStrings.current.language.locale),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
