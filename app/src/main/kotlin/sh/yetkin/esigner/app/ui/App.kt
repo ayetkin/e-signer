@@ -40,11 +40,13 @@ fun App(state: AppState, pickFiles: () -> Unit, saveFile: (java.io.File) -> java
                 val flow = state.flow
                 // The finished flow itself is the key, so the result screen keeps its results while fading out.
                 val page: Any = if (flow is SignFlow.Finished && state.tab == Tab.SIGN) flow else state.screen
-                Crossfade(page) { page ->
-                    when (page) {
-                        is SignFlow.Finished -> ResultScreen(state, page.results)
-                        Screen.CARD_SELECT -> Box(Modifier.padding(top = LocalTitleBarInset.current)) { CardSelectScreen(state) }
-                        else -> WorkspaceScreen(state, pickFiles, saveFile)
+                // The window resizes on entering and leaving the card screen, so that switch is instant: a fade would
+                // show the old screen squeezed into the new window size.
+                if (page == Screen.CARD_SELECT) {
+                    Box(Modifier.padding(top = LocalTitleBarInset.current)) { CardSelectScreen(state) }
+                } else {
+                    Crossfade(page) { page ->
+                        if (page is SignFlow.Finished) ResultScreen(state, page.results) else WorkspaceScreen(state, pickFiles, saveFile)
                     }
                 }
                 AnimatedVisibility(flow is SignFlow.Confirm || flow is SignFlow.Signing, enter = fadeIn(), exit = fadeOut()) {

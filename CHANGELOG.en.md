@@ -8,6 +8,16 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Fixed
+
+- The app held on to too much memory: the Java heap is capped at 2 GB and unused memory is returned to the system when
+  idle (page images left over from the PDF preview no longer pile up).
+- Memory and network load when validating many files: at most four files are validated at once, and CRL and
+  intermediate certificate downloads are cached for a few minutes (100 files no longer download the same CRL 100 times).
+  B-LT signing uses the same cache.
+- Going back to the card screen (e.g. clicking the card in the sidebar after signing) briefly showed the previous
+  screen together with the card screen in the shrunk window; the switch is now instant.
+
 ## [0.5.2] - 2026-10-15
 
 ### Added

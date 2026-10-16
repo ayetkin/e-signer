@@ -93,6 +93,23 @@ class TimestampTest {
     }
 
     @Test
+    fun `a batch validated online downloads the crl once, not once per file`() {
+        val signed = sign(SigningLevel.BASELINE_B, pdf(), SignatureFormat.PADES)
+        val copies = (1..100).map { signed.copyTo(File(dir, "copy-$it.pdf")) }
+        val validator = SignatureValidator(pki.anchors, online = true)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(4)
+        val started = System.nanoTime()
+        val checks = try {
+            copies.map { pool.submit<ValidationReport> { validator.validate(it) } }.map { it.get().signatures.single() }
+        } finally {
+            pool.shutdown()
+        }
+        println("100 files validated in ${(System.nanoTime() - started) / 1_000_000} ms, ${pki.crlRequests.get()} CRL downloads")
+        assertTrue(checks.all { it.verdict == Verdict.VALID }, checks.first().messages.joinToString())
+        assertEquals(1, pki.crlRequests.get(), "CRL downloads")
+    }
+
+    @Test
     fun `cades baseline lt validates offline`() {
         val input = File(dir, "notes.txt").apply { writeText("hello") }
         val check = offlineValidator().validate(sign(SigningLevel.BASELINE_LT, input, SignatureFormat.CADES)).signatures.single()

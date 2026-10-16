@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -16,6 +17,8 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import sh.yetkin.esigner.app.i18n.Language
@@ -98,6 +101,10 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     @Volatile
     private var activeSession: CardSession? = null
     private val validator by lazy { SignatureValidator() }
+
+    // Each validation holds the document, CRLs and reports in memory; a 100-file drop must not run them all at once.
+    private val verifySlots = Semaphore(VERIFY_PARALLELISM)
+    private val verifyJobs = mutableMapOf<File, Job>()
 
     var screen by mutableStateOf(Screen.CARD_SELECT)
         internal set
@@ -226,17 +233,23 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     fun addForVerify(newFiles: List<File>) {
         newFiles.map { it.absoluteFile }.filter { it.isFile && verifyItems.none { item -> item.file == it } }.forEach { file ->
             verifyItems.add(VerifyItem(file, VerifyState.Running))
-            scope.launch {
+            verifyJobs[file] = scope.launch {
                 val result = try {
-                    VerifyState.Done(withContext(Dispatchers.IO) { validator.validate(file) })
+                    VerifyState.Done(verifySlots.withPermit { withContext(Dispatchers.IO) { validator.validate(file) } })
                 } catch (e: SigningException) {
                     VerifyState.Failed(UiError.of(e))
+                } catch (e: CancellationException) {
+                    // Removed or cleared: a re-added item with the same path is not this job's.
+                    throw e
                 } catch (e: Exception) {
                     VerifyState.Failed(UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
                 } catch (e: LinkageError) {
                     // One file's validation must never crash the app.
                     VerifyState.Failed(UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
+                } catch (e: OutOfMemoryError) {
+                    VerifyState.Failed(UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
                 }
+                verifyJobs.remove(file)
                 val index = verifyItems.indexOfFirst { it.file == file }
                 if (index >= 0) verifyItems[index] = VerifyItem(file, result)
             }
@@ -244,10 +257,13 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     }
 
     fun removeVerify(file: File) {
+        verifyJobs.remove(file)?.cancel()
         verifyItems.removeAll { it.file == file }
     }
 
     fun clearVerify() {
+        verifyJobs.values.forEach { it.cancel() }
+        verifyJobs.clear()
         verifyItems.clear()
     }
 
@@ -440,6 +456,8 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
                         throw e
                     } catch (e: Exception) {
                         FileResult(input, null, UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
+                    } catch (e: OutOfMemoryError) {
+                        FileResult(input, null, UiError(SigningError.UNEXPECTED, e.javaClass.simpleName))
                     }
                 }
             } finally {
@@ -489,6 +507,7 @@ private fun resource(path: String) = AppState::class.java.getResourceAsStream(pa
 
 /** A card scan normally takes well under a second; past this the module is considered hung. */
 private const val SCAN_TIMEOUT_MS = 10_000L
+private const val VERIFY_PARALLELISM = 4
 
 /** "report.pdf.imz" -> "report.pdf"; anything else gets "-content" appended to its name. */
 fun contentName(file: File): String =

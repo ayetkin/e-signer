@@ -76,6 +76,8 @@ class SignatureValidator(
     private val anchors: TrustAnchors = TrustAnchors.bundled(),
     private val online: Boolean = true,
 ) {
+    private val loader = if (online) CachingDataLoader() else null
+
     fun validate(file: File): ValidationReport {
         val validator = validatorFor(file)
         val reports = try {
@@ -144,7 +146,7 @@ class SignatureValidator(
         } catch (e: Exception) {
             throw SigningException(SigningError.NOT_SIGNED, file.name, e)
         }
-        validator.setCertificateVerifier(certificateVerifier(anchors, online))
+        validator.setCertificateVerifier(certificateVerifier(anchors, online, loader))
         // Certificate binaries in the diagnostic data, to read the signer's name and QC statements.
         validator.setTokenExtractionStrategy(TokenExtractionStrategy.EXTRACT_CERTIFICATES_ONLY)
         return validator

@@ -58,6 +58,10 @@ mkdir -p "$OUT"
     --main-class sh.yetkin.esigner.app.MainKt \
     --runtime-image "$DIST/runtime" \
     --java-options "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn" \
+    --java-options "-Xmx2g" \
+    --java-options "-XX:G1PeriodicGCInterval=10000" \
+    --java-options "-XX:MinHeapFreeRatio=10" \
+    --java-options "-XX:MaxHeapFreeRatio=30" \
     --java-options "--add-modules=jdk.crypto.cryptoki" \
     --java-options "--add-exports=jdk.crypto.cryptoki/sun.security.pkcs11.wrapper=ALL-UNNAMED" \
     --java-options "--add-exports=java.desktop/com.apple.eawt.event=ALL-UNNAMED" \
