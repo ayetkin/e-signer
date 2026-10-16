@@ -57,6 +57,7 @@ import sh.yetkin.esigner.app.UiError
 import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.CertificateInfo
+import sh.yetkin.esigner.core.DetectedCard
 import sh.yetkin.esigner.core.IdType
 import sh.yetkin.esigner.core.PinStatus
 import java.awt.Desktop
@@ -301,6 +302,40 @@ fun idLine(info: CertificateInfo): String? = info.maskedNationalId?.let {
         it,
     )
     if (info.isFiscalSeal) str("card.fiscalSealId", id) else id
+}
+
+/** The holder's name, or the card's label. */
+@Composable
+fun cardName(card: DetectedCard): String = card.holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
+
+/** "Qualified e-signature", "Fiscal seal", or the card model. */
+@Composable
+fun cardKind(card: DetectedCard): String = when {
+    card.holder?.isQualified5070 == true -> str("card.kind.qualified")
+    card.holder?.isFiscalSeal == true -> str("card.kind.fiscalSeal")
+    else -> card.model.ifBlank { card.label }
+}
+
+/** Status text and color: green ready, amber PIN warning, red blocked or invalid; the flag says the card is ready. */
+@Composable
+fun cardStatus(card: DetectedCard): Triple<String, Color, Boolean> {
+    val colors = MaterialTheme.colorScheme
+    return when {
+        card.pinStatus == PinStatus.LOCKED -> Triple(str("pin.locked"), colors.error, false)
+        card.holder?.isValidAt(Instant.now()) == false -> Triple(str("certificate.notValid"), colors.error, false)
+        card.pinStatus == PinStatus.FINAL_TRY -> Triple(str("pin.finalTry"), colors.error, false)
+        card.pinStatus == PinStatus.COUNT_LOW -> Triple(str("pin.countLow"), LocalExtraColors.current.warning, false)
+        else -> Triple(str("card.ready"), colors.tertiary, true)
+    }
+}
+
+/** A colored dot with the status text next to it. */
+@Composable
+fun StatusLine(text: String, color: Color, textColor: Color = color, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = textColor)
+    }
 }
 
 @Composable

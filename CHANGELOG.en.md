@@ -17,6 +17,9 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 - Redesigned the card section in the sidebar: a "Change" link with an icon in its header, its details in Settings > Card on a click, the certificate kind (qualified
   e-signature, fiscal seal) or card model under the name, and "Ready" or the PIN/certificate warning with the expiry date below.
+- Settings > Card and the About dialog now match the sidebar: each inserted card is a tile with avatar, certificate kind
+  and status line, with "Card" and "Certificate" columns below; a warning tile when no reader or card is found, "Scan
+  again" in the heading. About lists developer, license, source code and updates as rows with icons.
 
 ### Fixed
 

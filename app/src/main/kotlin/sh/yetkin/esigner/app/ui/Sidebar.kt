@@ -54,8 +54,6 @@ import sh.yetkin.esigner.app.Updates
 import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.FormatMode
-import sh.yetkin.esigner.core.PinStatus
-import java.time.Instant
 
 /** Workspace layout: the sidebar with navigation, card and signature settings, and [content] on the right. */
 @Composable
@@ -407,20 +405,9 @@ private fun CardRow(state: AppState) {
             return@Column
         }
         val holder = card.holder
-        val name = holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
-        val kind = when {
-            holder?.isQualified5070 == true -> str("card.kind.qualified")
-            holder?.isFiscalSeal == true -> str("card.kind.fiscalSeal")
-            else -> card.model.ifBlank { card.label }
-        }
-        // Status text and color: green ready, amber PIN warning, red blocked or invalid.
-        val (status, statusColor, ready) = when {
-            card.pinStatus == PinStatus.LOCKED -> Triple(str("pin.locked"), colors.error, false)
-            holder?.isValidAt(Instant.now()) == false -> Triple(str("certificate.notValid"), colors.error, false)
-            card.pinStatus == PinStatus.FINAL_TRY -> Triple(str("pin.finalTry"), colors.error, false)
-            card.pinStatus == PinStatus.COUNT_LOW -> Triple(str("pin.countLow"), extra.warning, false)
-            else -> Triple(str("card.ready"), colors.tertiary, true)
-        }
+        val name = cardName(card)
+        val kind = cardKind(card)
+        val (status, statusColor, ready) = cardStatus(card)
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Avatar(name, 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -436,14 +423,7 @@ private fun CardRow(state: AppState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(Modifier.size(8.dp).background(statusColor, CircleShape))
-            Text(
-                status,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = if (ready) colors.onSurface else statusColor,
-                modifier = Modifier.weight(1f),
-            )
+            StatusLine(status, statusColor, if (ready) colors.onSurface else statusColor, Modifier.weight(1f))
             // A warning takes the whole line; the expiry date is shown while all is well.
             if (ready && holder != null) {
                 Text(str("card.expires", formatDate(holder.notAfter)), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1)

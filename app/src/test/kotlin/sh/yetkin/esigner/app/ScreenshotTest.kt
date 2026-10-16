@@ -436,6 +436,19 @@ class ScreenshotTest {
             settings.setForTest(SigningLevel.BASELINE_LT, SigningSettings.KAMU_SM_URL, TsaAuthType.KAMU_SM, "12345", "secret")
             openSettings(SettingsSection.TIMESTAMP)
         }, dark = true)
+        shot("dark-18c-settings-card-two", state(Language.EN) {
+            scan = ScanState.Ready(CardScan(2, listOf(card, card.copy(slotId = 2, readerName = "Reader 2", pinStatus = PinStatus.FINAL_TRY))))
+            selectedSlot = 1
+            screen = Screen.WORKSPACE
+            openSettings(SettingsSection.CARD)
+        }, dark = true)
+        shot("dark-22-about-update", state(Language.EN) {
+            scan = ScanState.Ready(CardScan(1, listOf(card)))
+            selectedSlot = 1
+            screen = Screen.WORKSPACE
+            openAbout()
+            updateCheck = UpdateCheck.Available("0.5.0")
+        }, dark = true)
         shot("dark-03-card-found", state(Language.EN) {
             scan = ScanState.Ready(CardScan(1, listOf(card)))
             selectedSlot = 1

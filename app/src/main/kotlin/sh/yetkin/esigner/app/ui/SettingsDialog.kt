@@ -27,7 +27,11 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextOverflow
+import sh.yetkin.esigner.app.i18n.LocalStrings
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -367,17 +371,24 @@ fun SettingsDialog(state: AppState) {
                                             }
                                         }
                                     }
-                                    Group(str("settings.card.detected")) {
+                                    Group(
+                                        str("settings.card.detected"),
+                                        action = {
+                                            TextButton(onClick = state::retryScan) {
+                                                Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Text(str("cardSelect.rescan"), modifier = Modifier.padding(start = 6.dp))
+                                            }
+                                        },
+                                    ) {
                                         when (val scan = state.scan) {
-                                            ScanState.Searching -> Hint(str("cardSelect.searching"))
+                                            ScanState.Searching -> LiveIndicator(str("cardSelect.searching"))
                                             is ScanState.Failed -> ErrorBanner(scan.error)
                                             is ScanState.Ready -> when {
-                                                scan.scan.readerCount == 0 -> Hint(str("cardSelect.noReader.title"))
-                                                scan.scan.cards.isEmpty() -> Hint(str("cardSelect.noCard.title"))
+                                                scan.scan.readerCount == 0 -> EmptyCardTile(str("cardSelect.noReader.title"), str("cardSelect.noReader.body"))
+                                                scan.scan.cards.isEmpty() -> EmptyCardTile(str("cardSelect.noCard.title"), str("cardSelect.noCard.body"))
                                                 else -> scan.scan.cards.forEach { CardDetails(it, it.slotId == state.selectedSlot) }
                                             }
                                         }
-                                        TextButton(onClick = state::retryScan) { Text(str("cardSelect.rescan")) }
                                     }
                                 }
                             }
@@ -424,11 +435,18 @@ private fun SectionItem(icon: ImageVector, label: String, selected: Boolean, onC
     }
 }
 
-/** A labelled block inside a section. */
+/** A labelled block inside a section; [action] sits at the end of the title line. */
 @Composable
-private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun Group(title: String, action: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.labelLarge)
+        if (action == null) {
+            Text(title, style = MaterialTheme.typography.labelLarge)
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                action()
+            }
+        }
         content()
     }
 }
@@ -462,58 +480,119 @@ private fun <T> OptionList(options: List<T>, selected: T, key: (T) -> String, on
     }
 }
 
-/** Everything the scan knows about one card, without a PIN: token, PIN counter and the signing certificate. */
+/** The warning tile of the sidebar, for a missing reader or card. */
 @Composable
-private fun CardDetails(card: DetectedCard, selected: Boolean) {
-    val holder = card.holder
-    Column(
+private fun EmptyCardTile(title: String, body: String) {
+    val extra = LocalExtraColors.current
+    Row(
         Modifier
             .fillMaxWidth()
-            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .background(extra.warningContainer, MaterialTheme.shapes.large)
+            .border(1.dp, extra.warning.copy(alpha = 0.3f), MaterialTheme.shapes.large)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(4.dp))
-        Detail(str("settings.card.reader"), card.readerName)
-        Detail(str("settings.card.model"), card.model)
-        Detail(str("settings.card.label"), card.label)
-        Detail(str("settings.card.slot"), card.slotId.toString())
-        Detail(
-            str("settings.card.pin"),
-            when (card.pinStatus) {
-                PinStatus.OK -> str("settings.card.pinOk")
-                PinStatus.COUNT_LOW -> str("pin.countLow")
-                PinStatus.FINAL_TRY -> str("pin.finalTry")
-                PinStatus.LOCKED -> str("pin.locked")
-            },
-        )
-        if (holder == null) {
-            Detail(str("settings.card.certificate"), str("settings.card.noCertificate"))
-        } else {
-            idLine(holder)?.let { Detail(str("settings.card.id"), it) }
-            Detail(str("settings.card.issuer"), holder.issuerName)
-            Detail(str("settings.card.validity"), "${formatDate(holder.notBefore)} - ${formatDate(holder.notAfter)}")
-            Detail(
-                str("settings.card.type"),
-                str(
-                    when {
-                        holder.isQualified5070 -> "settings.card.qualified"
-                        holder.isFiscalSeal -> "settings.card.fiscalSeal"
-                        else -> "settings.card.otherCertificate"
-                    },
-                ),
-            )
+        Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = extra.onWarningContainer)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = extra.onWarningContainer)
         }
     }
 }
 
+/**
+ * Everything the scan knows about one card, without a PIN: the sidebar's tile on top (holder, kind, status), and
+ * under it the token and the signing certificate side by side.
+ */
 @Composable
-private fun Detail(label: String, value: String) {
+private fun CardDetails(card: DetectedCard, selected: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    val holder = card.holder
+    val name = cardName(card)
+    val kind = cardKind(card)
+    val (status, statusColor, ready) = cardStatus(card)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .border(1.dp, if (selected) colors.primary else colors.outlineVariant, MaterialTheme.shapes.large),
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Avatar(name, 40.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (kind.isNotBlank()) Text(kind, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (selected) Chip(str("settings.card.selected"), Tone.INFO)
+            StatusLine(status, statusColor, if (ready) colors.onSurface else statusColor)
+        }
+        HorizontalDivider(color = colors.outlineVariant)
+        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            DetailColumn(AppIcons.CreditCard, str("settings.section.CARD"), Modifier.weight(1f)) {
+                Detail(str("settings.card.reader"), card.readerName)
+                Detail(str("settings.card.model"), card.model)
+                Detail(str("settings.card.label"), card.label)
+                Detail(str("settings.card.slot"), card.slotId.toString())
+                Detail(
+                    str("settings.card.pin"),
+                    when (card.pinStatus) {
+                        PinStatus.OK -> str("settings.card.pinOk")
+                        PinStatus.COUNT_LOW -> str("pin.countLow")
+                        PinStatus.FINAL_TRY -> str("pin.finalTry")
+                        PinStatus.LOCKED -> str("pin.locked")
+                    },
+                    if (card.pinStatus == PinStatus.OK) null else statusColor,
+                )
+            }
+            DetailColumn(AppIcons.VerifiedUserOutlined, str("settings.card.certificate"), Modifier.weight(1f)) {
+                if (holder == null) {
+                    Hint(str("settings.card.noCertificate"))
+                } else {
+                    idLine(holder)?.let { Detail(str("settings.card.id"), it) }
+                    Detail(str("settings.card.issuer"), holder.issuerName)
+                    Detail(str("settings.card.validity"), "${formatDate(holder.notBefore)} - ${formatDate(holder.notAfter)}")
+                    Detail(
+                        str("settings.card.type"),
+                        str(
+                            when {
+                                holder.isQualified5070 -> "settings.card.qualified"
+                                holder.isFiscalSeal -> "settings.card.fiscalSeal"
+                                else -> "settings.card.otherCertificate"
+                            },
+                        ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A captioned column of details, the caption in the sidebar's small capitals with an icon. */
+@Composable
+private fun DetailColumn(icon: ImageVector, caption: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+            Text(
+                caption.uppercase(LocalStrings.current.language.locale),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        content()
+    }
+}
+
+/** A small label with its value under it, like the sidebar rows. */
+@Composable
+private fun Detail(label: String, value: String, valueColor: Color? = null) {
     if (value.isBlank()) return
-    Row {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(150.dp))
-        Text(value, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = valueColor ?: MaterialTheme.colorScheme.onSurface)
     }
 }
 

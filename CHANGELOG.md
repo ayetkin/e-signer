@@ -18,6 +18,9 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 - Kenar çubuğundaki kart bölümü yenilendi: başlıkta simgeli "Değiştir" bağlantısı, karta tıklayınca Ayarlar > Kart'ta ayrıntıları, adın altında sertifika türü (nitelikli
   e-imza, mali mühür) ya da kart modeli, altta "Hazır" ya da PIN/sertifika uyarısı ve bitiş tarihi.
+- Ayarlar > Kart ve Hakkında pencereleri kenar çubuğuyla aynı dile getirildi: takılı her kart avatar, sertifika türü ve
+  durum satırıyla bir karo, altında "Kart" ve "Sertifika" sütunları; okuyucu/kart yoksa uyarı karosu, "Yeniden tara"
+  başlıkta. Hakkında'da geliştirici, lisans, kaynak kodu ve güncelleme simgeli satırlar halinde.
 
 ### Düzeltilenler
 
