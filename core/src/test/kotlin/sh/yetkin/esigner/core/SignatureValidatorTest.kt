@@ -131,6 +131,21 @@ class SignatureValidatorTest {
     }
 
     @Test
+    fun `a page added after signing is reported and not legally valid`() {
+        val signed = signedPdf(qualified = true)
+        val extended = File(dir, "extended.pdf")
+        PDDocument.load(signed).use { doc ->
+            doc.addPage(PDPage())
+            listOf(doc.documentCatalog.cosObject, doc.pages.cosObject).forEach { it.isNeedToBeUpdated = true }
+            extended.outputStream().use { doc.saveIncremental(it) }
+        }
+        val check = validator(TestKeys.qualifiedCertificate).validate(extended).signatures.single()
+        assertTrue(SignatureProblem.PAGES_CHANGED in check.problems, "${check.problems} ${check.messages}")
+        assertTrue(check.modifiedAfterSigning)
+        assertFalse(check.isLegallyValid)
+    }
+
+    @Test
     fun `a later signature keeps the earlier one legally valid`() {
         val first = signedPdf(qualified = true)
         val second = TestKeys.qualifiedToken().use { signer.sign(first, SignatureFormat.PADES, it, it.keys.single()) }

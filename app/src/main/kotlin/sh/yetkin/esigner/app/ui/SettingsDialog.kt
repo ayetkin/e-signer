@@ -64,7 +64,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.rememberCoroutineScope
 import sh.yetkin.esigner.app.ScanState
 import sh.yetkin.esigner.app.SettingsSection
-import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.SigningSettings
 import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.core.VisibleStamp
@@ -521,7 +520,7 @@ private fun Detail(label: String, value: String) {
 /** Gear button that opens the settings; for screens without the sidebar. */
 @Composable
 fun SettingsButton(state: AppState, modifier: Modifier = Modifier) {
-    IconButton(onClick = { state.openSettings() }, modifier = modifier, enabled = state.flow == SignFlow.Idle) {
+    IconButton(onClick = { state.openSettings() }, modifier = modifier, enabled = state.settingsAvailable) {
         Icon(
             Icons.Outlined.Settings,
             contentDescription = str("settings.title"),

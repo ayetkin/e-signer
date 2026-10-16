@@ -325,8 +325,11 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
 
     // Signature settings
 
+    /** Not while the PIN dialog or a signing run is up; the results screen is fine. */
+    val settingsAvailable: Boolean get() = flow == SignFlow.Idle || flow is SignFlow.Finished
+
     fun openSettings(section: SettingsSection = SettingsSection.GENERAL) {
-        if (flow != SignFlow.Idle || aboutOpen) return
+        if (!settingsAvailable || aboutOpen) return
         settingsSection = section
         settingsOpen = true
     }

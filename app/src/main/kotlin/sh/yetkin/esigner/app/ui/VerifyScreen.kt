@@ -193,7 +193,7 @@ private fun FileVerdictChip(verdict: FileVerdict) {
     }
 }
 
-/** Sub-indications that only restate a [SignatureProblem]: a broken format, digest or signature value. */
+/** Sub-indications that only restate a broken-signature [SignatureProblem]: a broken format, digest or signature value. */
 private val COVERED_BY_PROBLEMS = setOf("FORMAT_FAILURE", "HASH_FAILURE", "SIG_CRYPTO_FAILURE", "SIGNED_DATA_NOT_FOUND")
 
 @Composable
@@ -214,7 +214,7 @@ private fun SignatureView(check: SignatureCheck) {
             Text(headline, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = toneAccent(tone))
             val strings = LocalStrings.current
             // The specific problems below say more than these generic codes, which then add nothing.
-            check.subIndication?.takeUnless { check.problems.isNotEmpty() && it in COVERED_BY_PROBLEMS }?.let { code ->
+            check.subIndication?.takeUnless { it in COVERED_BY_PROBLEMS && check.problems.any { p -> !p.laterChange } }?.let { code ->
                 val key = "verify.reason.$code"
                 Text(
                     if (strings.has(key)) strings[key] else strings["verify.reason.other", code],

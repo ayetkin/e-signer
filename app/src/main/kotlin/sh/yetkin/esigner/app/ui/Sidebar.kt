@@ -350,7 +350,12 @@ private fun CardHeader(state: AppState) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(AppIcons.SwapHoriz, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Icon(
+                    if (state.selectedCard == null) AppIcons.CreditCard else AppIcons.SwapHoriz,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text(
                     str(if (state.selectedCard == null) "card.choose" else "card.change"),
                     style = MaterialTheme.typography.labelMedium,
@@ -370,7 +375,7 @@ private fun CardHeader(state: AppState) {
 private fun CardRow(state: AppState) {
     val card = state.selectedCard
     // A card opens its details in the settings (closed while a signing step runs); without one, card selection.
-    val enabled = if (card == null) state.flow !is SignFlow.Signing else state.flow == SignFlow.Idle
+    val enabled = if (card == null) state.flow !is SignFlow.Signing else state.settingsAvailable
     val extra = LocalExtraColors.current
     val colors = MaterialTheme.colorScheme
     Column(
@@ -380,7 +385,9 @@ private fun CardRow(state: AppState) {
             .background(if (card == null) extra.warningContainer else colors.surface)
             .border(1.dp, if (card == null) extra.warning.copy(alpha = 0.3f) else colors.outlineVariant, MaterialTheme.shapes.large)
             .handCursor(enabled)
-            .clickable(enabled = enabled) { if (card == null) state.changeCard() else state.openSettings(SettingsSection.CARD) },
+            .clickable(enabled = enabled, onClickLabel = str(if (card == null) "card.choose" else "card.details")) {
+                if (card == null) state.changeCard() else state.openSettings(SettingsSection.CARD)
+            },
     ) {
         if (card == null) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -407,14 +414,13 @@ private fun CardRow(state: AppState) {
             else -> card.model.ifBlank { card.label }
         }
         // Status text and color: green ready, amber PIN warning, red blocked or invalid.
-        val (status, statusColor) = when {
-            card.pinStatus == PinStatus.LOCKED -> str("pin.locked") to colors.error
-            holder?.isValidAt(Instant.now()) == false -> str("certificate.notValid") to colors.error
-            card.pinStatus == PinStatus.FINAL_TRY -> str("pin.finalTry") to colors.error
-            card.pinStatus == PinStatus.COUNT_LOW -> str("pin.countLow") to extra.warning
-            else -> str("card.ready") to colors.tertiary
+        val (status, statusColor, ready) = when {
+            card.pinStatus == PinStatus.LOCKED -> Triple(str("pin.locked"), colors.error, false)
+            holder?.isValidAt(Instant.now()) == false -> Triple(str("certificate.notValid"), colors.error, false)
+            card.pinStatus == PinStatus.FINAL_TRY -> Triple(str("pin.finalTry"), colors.error, false)
+            card.pinStatus == PinStatus.COUNT_LOW -> Triple(str("pin.countLow"), extra.warning, false)
+            else -> Triple(str("card.ready"), colors.tertiary, true)
         }
-        val ready = statusColor == colors.tertiary
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Avatar(name, 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

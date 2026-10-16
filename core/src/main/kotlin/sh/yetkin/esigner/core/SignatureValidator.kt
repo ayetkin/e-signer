@@ -23,8 +23,11 @@ enum class Verdict {
     INDETERMINATE,
 }
 
-/** A concrete reason behind a verdict, read from the DSS diagnostic data, so the UI can say what is wrong. */
-enum class SignatureProblem {
+/**
+ * A concrete reason behind a verdict, read from the DSS diagnostic data, so the UI can say what is wrong.
+ * [laterChange]: a change in a later PDF revision rather than a broken signature.
+ */
+enum class SignatureProblem(val laterChange: Boolean = false) {
     /** The signed byte range or signature dictionary no longer matches the file: it was re-saved or edited in place. */
     BYTE_RANGE_INVALID,
 
@@ -38,13 +41,13 @@ enum class SignatureProblem {
     SIGNATURE_VALUE_INVALID,
 
     /** A later PDF revision changes what the pages show, or adds or removes pages; see [SignatureCheck.changedPages]. */
-    PAGES_CHANGED,
+    PAGES_CHANGED(laterChange = true),
 
     /** A later PDF revision adds or changes annotations (comments, drawings, stamps). */
-    ANNOTATIONS_CHANGED,
+    ANNOTATIONS_CHANGED(laterChange = true),
 
     /** A later PDF revision makes other changes the validator cannot classify. */
-    OTHER_CHANGES,
+    OTHER_CHANGES(laterChange = true),
 }
 
 data class SignatureCheck(
@@ -124,6 +127,8 @@ class SignatureValidator(
             val signingCertificate = signature?.signingCertificate?.binaries?.let(::parseCertificate)
             val indication = simple.getIndication(id)
             val timestamp = signature?.timestampList?.filter { it.productionTime != null }?.minByOrNull { it.productionTime }
+            val pages = signature?.let(::changedPages).orEmpty()
+            val problems = signature?.let { problemsOf(it, pages) }.orEmpty()
             SignatureCheck(
                 signer = signingCertificate?.let(CertificateInfo::from),
                 verdict = when (indication) {
@@ -138,13 +143,9 @@ class SignatureValidator(
                 format = simple.getSignatureFormat(id)?.toString(),
                 messages = (simple.getAdESValidationErrors(id) + simple.getAdESValidationWarnings(id))
                     .map { it.value }.distinct(),
-                modifiedAfterSigning = signature != null && (
-                    !signature.pdfAnnotationChanges.isNullOrEmpty() ||
-                        !signature.pdfUndefinedChanges.isNullOrEmpty() ||
-                        !signature.pdfVisualDifferenceConcernedPages.isNullOrEmpty()
-                    ),
-                problems = signature?.let(::problemsOf).orEmpty(),
-                changedPages = signature?.let { changedPages(it) }.orEmpty(),
+                modifiedAfterSigning = problems.any { it.laterChange },
+                problems = problems,
+                changedPages = pages,
                 timestampAuthority = timestamp?.signingCertificate?.commonName,
                 trustedTimestamp = timestamp != null && timestamp.isSignatureValid && timestamp.isMessageImprintDataIntact &&
                     timestamp.certificateChain.any { it.isTrusted },
@@ -183,7 +184,7 @@ class SignatureValidator(
         return validator
     }
 
-    private fun problemsOf(signature: SignatureWrapper): List<SignatureProblem> = buildList {
+    private fun problemsOf(signature: SignatureWrapper, changedPages: List<Int>): List<SignatureProblem> = buildList {
         val revision = signature.pdfRevision
         val digests = signature.digestMatchers.orEmpty()
         // Each of these makes the next ones fail as well; only the first one is the cause.
@@ -192,9 +193,10 @@ class SignatureValidator(
                 add(SignatureProblem.BYTE_RANGE_INVALID)
             digests.any { !it.isDataFound } -> add(SignatureProblem.CONTENT_MISSING)
             digests.any { !it.isDataIntact } -> add(SignatureProblem.CONTENT_CHANGED)
-            !signature.isSignatureIntact -> add(SignatureProblem.SIGNATURE_VALUE_INVALID)
+            // Without the signer's certificate nothing was verified; the sub-indication says that instead.
+            !signature.isSignatureIntact && signature.signingCertificate != null -> add(SignatureProblem.SIGNATURE_VALUE_INVALID)
         }
-        if (changedPages(signature).isNotEmpty()) add(SignatureProblem.PAGES_CHANGED)
+        if (changedPages.isNotEmpty()) add(SignatureProblem.PAGES_CHANGED)
         if (!signature.pdfAnnotationChanges.isNullOrEmpty()) add(SignatureProblem.ANNOTATIONS_CHANGED)
         if (!signature.pdfUndefinedChanges.isNullOrEmpty()) add(SignatureProblem.OTHER_CHANGES)
     }
