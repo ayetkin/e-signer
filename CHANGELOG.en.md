@@ -8,6 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-16
+
 ### Added
 
 - Validation now says concretely why a signature is invalid or questionable: the file re-saved after signing, the
@@ -122,7 +124,8 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ayetkin/e-signer/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0

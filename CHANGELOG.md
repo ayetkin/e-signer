@@ -8,6 +8,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.6.0] - 2026-10-16
+
 ### Eklenenler
 
 - Doğrulamada imzanın neden geçersiz ya da şüpheli olduğu somut olarak gösteriliyor: dosyanın imzadan sonra yeniden
@@ -121,7 +123,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.5.2...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ayetkin/e-signer/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/ayetkin/e-signer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ayetkin/e-signer/compare/v0.4.1...v0.5.0
