@@ -15,6 +15,7 @@ import sh.yetkin.esigner.core.DetectedCard
 import sh.yetkin.esigner.core.IdType
 import sh.yetkin.esigner.core.PinStatus
 import sh.yetkin.esigner.core.SignatureCheck
+import sh.yetkin.esigner.core.SignatureProblem
 import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.Verdict
 import sh.yetkin.esigner.core.SigningError
@@ -309,6 +310,31 @@ class ScreenshotTest {
         }
         for (lang in Language.entries) {
             val l = lang.tag
+            shot("$l-21b-verify-problems", state(lang) {
+                screen = Screen.WORKSPACE
+                tab = Tab.VERIFY
+                val f = sampleFiles()
+                val check = SignatureCheck(
+                    signer = holder.copy(isQualified5070 = true),
+                    verdict = Verdict.INVALID,
+                    subIndication = "FORMAT_FAILURE",
+                    trustedChain = true,
+                    claimedSigningTime = Instant.parse("2026-10-14T09:30:00Z"),
+                    timestampTime = null,
+                    format = "PAdES-BASELINE-B",
+                    messages = listOf("The /ByteRange dictionary is not consistent!"),
+                    problems = listOf(SignatureProblem.BYTE_RANGE_INVALID),
+                )
+                val modified = check.copy(
+                    verdict = Verdict.VALID,
+                    subIndication = null,
+                    modifiedAfterSigning = true,
+                    problems = listOf(SignatureProblem.PAGES_CHANGED, SignatureProblem.ANNOTATIONS_CHANGED),
+                    changedPages = listOf(1, 3),
+                )
+                verifyItems.add(VerifyItem(f[0], VerifyState.Done(ValidationReport(f[0], listOf(check), false))))
+                verifyItems.add(VerifyItem(f[1], VerifyState.Done(ValidationReport(f[1], listOf(modified), false))))
+            })
             shot("$l-20-verify-empty", state(lang) { screen = Screen.WORKSPACE; tab = Tab.VERIFY })
             shot("$l-21-verify-results", state(lang) {
                 screen = Screen.WORKSPACE

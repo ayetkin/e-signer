@@ -8,6 +8,12 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Eklenenler
+
+- Doğrulamada imzanın neden geçersiz ya da şüpheli olduğu somut olarak gösteriliyor: dosyanın imzadan sonra yeniden
+  kaydedilmesi, imzalı içeriğin değişmesi, imza değerinin bozulması, sonradan değişen sayfalar (sayfa numaralarıyla) ve
+  eklenen notlar.
+
 ### Düzeltilenler
 
 - Uygulama çok bellek tutuyordu: Java heap'i 2 GB ile sınırlandı ve boşta kullanılmayan bellek sisteme geri veriliyor

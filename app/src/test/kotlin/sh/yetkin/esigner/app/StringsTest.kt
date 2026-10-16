@@ -2,6 +2,7 @@ package sh.yetkin.esigner.app
 
 import sh.yetkin.esigner.app.i18n.Language
 import sh.yetkin.esigner.app.i18n.Strings
+import sh.yetkin.esigner.core.SignatureProblem
 import sh.yetkin.esigner.core.SigningError
 import sh.yetkin.esigner.core.SigningLevel
 import java.io.File
@@ -36,6 +37,12 @@ class StringsTest {
     fun `every error code has a message`() {
         val keys = bundles.getValue(Language.EN).keys
         SigningError.entries.forEach { assertTrue("error.${it.name}" in keys, it.name) }
+    }
+
+    @Test
+    fun `every signature problem has a message`() {
+        val keys = bundles.getValue(Language.EN).keys
+        SignatureProblem.entries.forEach { assertTrue("verify.problem.${it.name}" in keys, it.name) }
     }
 
     @Test

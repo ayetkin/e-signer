@@ -52,6 +52,7 @@ import sh.yetkin.esigner.app.i18n.LocalStrings
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.IdType
 import sh.yetkin.esigner.core.SignatureCheck
+import sh.yetkin.esigner.core.SignatureProblem
 import sh.yetkin.esigner.core.ValidationReport
 import sh.yetkin.esigner.core.Verdict
 import java.io.File
@@ -192,6 +193,9 @@ private fun FileVerdictChip(verdict: FileVerdict) {
     }
 }
 
+/** Sub-indications that only restate a [SignatureProblem]: a broken format, digest or signature value. */
+private val COVERED_BY_PROBLEMS = setOf("FORMAT_FAILURE", "HASH_FAILURE", "SIG_CRYPTO_FAILURE", "SIGNED_DATA_NOT_FOUND")
+
 @Composable
 private fun SignatureView(check: SignatureCheck) {
     val (tone, icon, headline) = when {
@@ -208,11 +212,19 @@ private fun SignatureView(check: SignatureCheck) {
         StatusIcon(icon, tone)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(headline, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = toneAccent(tone))
-            check.subIndication?.let { code ->
-                val strings = LocalStrings.current
+            val strings = LocalStrings.current
+            // The specific problems below say more than these generic codes, which then add nothing.
+            check.subIndication?.takeUnless { check.problems.isNotEmpty() && it in COVERED_BY_PROBLEMS }?.let { code ->
                 val key = "verify.reason.$code"
                 Text(
                     if (strings.has(key)) strings[key] else strings["verify.reason.other", code],
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            check.problems.forEach { problem ->
+                val key = "verify.problem.${problem.name}"
+                Text(
+                    "• " + if (problem == SignatureProblem.PAGES_CHANGED) strings[key, check.changedPages.joinToString(", ")] else strings[key],
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

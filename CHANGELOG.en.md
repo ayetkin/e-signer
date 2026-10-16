@@ -8,6 +8,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Added
+
+- Validation now says concretely why a signature is invalid or questionable: the file re-saved after signing, the
+  signed content changed, a broken signature value, pages changed later (with page numbers) and added comments.
+
 ### Fixed
 
 - The app held on to too much memory: the Java heap is capped at 2 GB and unused memory is returned to the system when

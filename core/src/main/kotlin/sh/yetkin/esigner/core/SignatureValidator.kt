@@ -1,5 +1,6 @@
 package sh.yetkin.esigner.core
 
+import eu.europa.esig.dss.diagnostic.SignatureWrapper
 import eu.europa.esig.dss.enumerations.Indication
 import eu.europa.esig.dss.enumerations.TokenExtractionStrategy
 import eu.europa.esig.dss.model.FileDocument
@@ -20,6 +21,30 @@ enum class Verdict {
 
     /** ETSI INDETERMINATE: not provable now, e.g. untrusted root or revocation not reachable. */
     INDETERMINATE,
+}
+
+/** A concrete reason behind a verdict, read from the DSS diagnostic data, so the UI can say what is wrong. */
+enum class SignatureProblem {
+    /** The signed byte range or signature dictionary no longer matches the file: it was re-saved or edited in place. */
+    BYTE_RANGE_INVALID,
+
+    /** The signed content is not where the signature points. */
+    CONTENT_MISSING,
+
+    /** The signed content's digest does not match: the content changed after signing. */
+    CONTENT_CHANGED,
+
+    /** The signature value does not verify with the signer's certificate. */
+    SIGNATURE_VALUE_INVALID,
+
+    /** A later PDF revision changes what the pages show, or adds or removes pages; see [SignatureCheck.changedPages]. */
+    PAGES_CHANGED,
+
+    /** A later PDF revision adds or changes annotations (comments, drawings, stamps). */
+    ANNOTATIONS_CHANGED,
+
+    /** A later PDF revision makes other changes the validator cannot classify. */
+    OTHER_CHANGES,
 }
 
 data class SignatureCheck(
@@ -48,6 +73,10 @@ data class SignatureCheck(
      * timestamp from an authorized provider, not one from an arbitrary server.
      */
     val trustedTimestamp: Boolean = false,
+    /** Most serious first; empty when nothing specific was found. */
+    val problems: List<SignatureProblem> = emptyList(),
+    /** 1-based pages that [SignatureProblem.PAGES_CHANGED] concerns. */
+    val changedPages: List<Int> = emptyList(),
 ) {
     /**
      * A secure electronic signature in the sense of Law 5070: valid by ETSI rules, chained to a
@@ -114,6 +143,8 @@ class SignatureValidator(
                         !signature.pdfUndefinedChanges.isNullOrEmpty() ||
                         !signature.pdfVisualDifferenceConcernedPages.isNullOrEmpty()
                     ),
+                problems = signature?.let(::problemsOf).orEmpty(),
+                changedPages = signature?.let { changedPages(it) }.orEmpty(),
                 timestampAuthority = timestamp?.signingCertificate?.commonName,
                 trustedTimestamp = timestamp != null && timestamp.isSignatureValid && timestamp.isMessageImprintDataIntact &&
                     timestamp.certificateChain.any { it.isTrusted },
@@ -151,6 +182,26 @@ class SignatureValidator(
         validator.setTokenExtractionStrategy(TokenExtractionStrategy.EXTRACT_CERTIFICATES_ONLY)
         return validator
     }
+
+    private fun problemsOf(signature: SignatureWrapper): List<SignatureProblem> = buildList {
+        val revision = signature.pdfRevision
+        val digests = signature.digestMatchers.orEmpty()
+        // Each of these makes the next ones fail as well; only the first one is the cause.
+        when {
+            revision != null && (!revision.isSignatureByteRangeValid || !revision.isPdfSignatureDictionaryConsistent) ->
+                add(SignatureProblem.BYTE_RANGE_INVALID)
+            digests.any { !it.isDataFound } -> add(SignatureProblem.CONTENT_MISSING)
+            digests.any { !it.isDataIntact } -> add(SignatureProblem.CONTENT_CHANGED)
+            !signature.isSignatureIntact -> add(SignatureProblem.SIGNATURE_VALUE_INVALID)
+        }
+        if (changedPages(signature).isNotEmpty()) add(SignatureProblem.PAGES_CHANGED)
+        if (!signature.pdfAnnotationChanges.isNullOrEmpty()) add(SignatureProblem.ANNOTATIONS_CHANGED)
+        if (!signature.pdfUndefinedChanges.isNullOrEmpty()) add(SignatureProblem.OTHER_CHANGES)
+    }
+
+    private fun changedPages(signature: SignatureWrapper): List<Int> =
+        (signature.pdfVisualDifferenceConcernedPages.orEmpty() + signature.pdfPageDifferenceConcernedPages.orEmpty())
+            .map { it.toInt() }.distinct().sorted()
 
     private fun parseCertificate(bytes: ByteArray): X509Certificate? = runCatching {
         CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(bytes)) as X509Certificate

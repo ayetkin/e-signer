@@ -79,6 +79,7 @@ class SignatureValidatorTest {
         val check = validator(TestKeys.certificate).validate(imz).signatures.single()
         assertEquals(Verdict.INVALID, check.verdict)
         assertEquals("HASH_FAILURE", check.subIndication)
+        assertEquals(listOf(SignatureProblem.CONTENT_CHANGED), check.problems)
     }
 
     @Test
@@ -92,6 +93,18 @@ class SignatureValidatorTest {
         pdf.writeBytes(bytes)
         val check = validator(TestKeys.certificate).validate(pdf).signatures.single()
         assertEquals(Verdict.INVALID, check.verdict, check.messages.joinToString())
+        assertEquals(listOf(SignatureProblem.CONTENT_CHANGED), check.problems, check.messages.joinToString())
+    }
+
+    @Test
+    fun `a signed pdf saved again as a whole explains why it is invalid`() {
+        val pdf = signedPdf()
+        // An editor that rewrites the file instead of appending an incremental update.
+        val resaved = File(dir, "resaved.pdf")
+        PDDocument.load(pdf).use { it.save(resaved) }
+        val check = validator(TestKeys.certificate).validate(resaved).signatures.single()
+        assertEquals(Verdict.INVALID, check.verdict, check.messages.joinToString())
+        assertEquals(listOf(SignatureProblem.BYTE_RANGE_INVALID), check.problems, check.messages.joinToString())
     }
 
     @Test
@@ -113,6 +126,7 @@ class SignatureValidatorTest {
         assertTrue("pay 1000000" in tampered.readText(Charsets.ISO_8859_1), "the annotation must reach the file")
         val check = validator(TestKeys.qualifiedCertificate).validate(tampered).signatures.single()
         assertTrue(check.modifiedAfterSigning, check.messages.joinToString())
+        assertTrue(SignatureProblem.ANNOTATIONS_CHANGED in check.problems, check.problems.toString())
         assertFalse(check.isLegallyValid)
     }
 
@@ -123,6 +137,7 @@ class SignatureValidatorTest {
         val checks = validator(TestKeys.qualifiedCertificate).validate(second).signatures
         assertEquals(2, checks.size)
         assertTrue(checks.all { it.isLegallyValid }, checks.joinToString { it.messages.joinToString() })
+        assertTrue(checks.all { it.problems.isEmpty() }, checks.joinToString { it.problems.toString() })
     }
 
     @Test
