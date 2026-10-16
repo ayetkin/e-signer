@@ -14,6 +14,11 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
   kaydedilmesi, imzalı içeriğin değişmesi, imza değerinin bozulması, sonradan değişen sayfalar (sayfa numaralarıyla) ve
   eklenen notlar.
 
+### Değişenler
+
+- Kenar çubuğundaki kart bölümü yenilendi: başlıkta simgeli "Değiştir" bağlantısı, karta tıklayınca Ayarlar > Kart'ta ayrıntıları, adın altında sertifika türü (nitelikli
+  e-imza, mali mühür) ya da kart modeli, altta "Hazır" ya da PIN/sertifika uyarısı ve bitiş tarihi.
+
 ### Düzeltilenler
 
 - Uygulama çok bellek tutuyordu: Java heap'i 2 GB ile sınırlandı ve boşta kullanılmayan bellek sisteme geri veriliyor

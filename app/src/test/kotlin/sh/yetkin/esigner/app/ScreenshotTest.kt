@@ -208,6 +208,16 @@ class ScreenshotTest {
             })
             shot("$l-10-workspace-empty", state(lang, ready))
             shot("$l-11-workspace-files", state(lang) { ready(); files.addAll(sampleFiles()) })
+            shot("$l-11e-workspace-card-final-try", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                scan = ScanState.Ready(CardScan(1, listOf(card.copy(pinStatus = PinStatus.COUNT_LOW))))
+            })
+            shot("$l-11f-workspace-fiscal-seal", state(lang) {
+                ready()
+                files.addAll(sampleFiles())
+                scan = ScanState.Ready(CardScan(1, listOf(sealCard)))
+            })
             shot("$l-11b-workspace-stamp", state(lang) {
                 ready()
                 files.addAll(sampleFiles())

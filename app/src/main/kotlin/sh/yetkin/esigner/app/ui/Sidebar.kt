@@ -129,7 +129,7 @@ private fun Sidebar(state: AppState) {
                     onClick = { openLink(Updates.RELEASES_URL) },
                 )
             }
-            Caption(str("sidebar.card"), top = 8.dp)
+            CardHeader(state)
             CardRow(state)
         }
     }
@@ -332,82 +332,116 @@ private fun <T> ChoiceRow(
 
 private fun formatKey(mode: FormatMode) = if (mode == FormatMode.AUTO) "format.auto" else "format.cadesOnly"
 
+/** The section caption with the way back to card selection at its end. */
+@Composable
+private fun CardHeader(state: AppState) {
+    val canChange = state.flow !is SignFlow.Signing
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) { Caption(str("sidebar.card"), top = 8.dp) }
+        if (canChange) {
+            val color = MaterialTheme.colorScheme.primary
+            Row(
+                Modifier
+                    .padding(top = 8.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .handCursor(true)
+                    .clickable(onClick = state::changeCard)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(AppIcons.SwapHoriz, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Text(
+                    str(if (state.selectedCard == null) "card.choose" else "card.change"),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = color,
+                )
+            }
+        }
+    }
+}
+
 /**
- * The chosen card as a tile: avatar with a status dot, the holder's name, and one status line (expiry when
- * all is well, otherwise the most serious PIN or certificate problem). Clicking it goes back to card selection.
+ * The chosen card as a tile: the holder and the kind of certificate, then its state (ready, or the most serious
+ * PIN or certificate problem) next to the expiry date. Clicking it shows the card's details.
  */
 @Composable
 private fun CardRow(state: AppState) {
     val card = state.selectedCard
-    val canChange = state.flow !is SignFlow.Signing
+    // A card opens its details in the settings (closed while a signing step runs); without one, card selection.
+    val enabled = if (card == null) state.flow !is SignFlow.Signing else state.flow == SignFlow.Idle
     val extra = LocalExtraColors.current
     val colors = MaterialTheme.colorScheme
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
             .background(if (card == null) extra.warningContainer else colors.surface)
             .border(1.dp, if (card == null) extra.warning.copy(alpha = 0.3f) else colors.outlineVariant, MaterialTheme.shapes.large)
-            .handCursor(canChange)
-            .clickable(enabled = canChange, onClick = state::changeCard)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .handCursor(enabled)
+            .clickable(enabled = enabled) { if (card == null) state.changeCard() else state.openSettings(SettingsSection.CARD) },
     ) {
         if (card == null) {
-            Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(40.dp).background(extra.warning.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(AppIcons.CreditCard, contentDescription = null, tint = extra.onWarningContainer, modifier = Modifier.size(20.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        str(if (state.selectedSlot == null) "card.none" else "card.removed"),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = extra.onWarningContainer,
+                    )
+                    Text(str("card.insertHint"), style = MaterialTheme.typography.bodySmall, color = extra.onWarningContainer)
+                }
             }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    str(if (state.selectedSlot == null) "card.none" else "card.removed"),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = extra.onWarningContainer,
-                )
-                Text(str("card.choose"), style = MaterialTheme.typography.bodySmall, color = colors.primary, fontWeight = FontWeight.Medium)
-            }
-        } else {
-            val holder = card.holder
-            val name = holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
-            // Status text, dot color, text color.
-            val (status, dot, statusColor) = when {
-                card.pinStatus == PinStatus.LOCKED -> Triple(str("pin.locked"), colors.error, colors.error)
-                holder?.isValidAt(Instant.now()) == false -> Triple(str("certificate.notValid"), colors.error, colors.error)
-                card.pinStatus == PinStatus.FINAL_TRY -> Triple(str("pin.finalTry"), colors.error, colors.error)
-                card.pinStatus == PinStatus.COUNT_LOW -> Triple(str("pin.countLow"), extra.warning, extra.warning)
-                else -> Triple(
-                    holder?.let { str(if (it.isFiscalSeal) "card.fiscalSealExpires" else "card.expires", formatDate(it.notAfter)) },
-                    colors.tertiary,
-                    colors.onSurfaceVariant,
-                )
-            }
-            Box {
-                Avatar(name, 40.dp)
-                // Status dot: green ready, amber PIN warning, red blocked or invalid.
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(12.dp)
-                        .background(colors.surface, CircleShape)
-                        .padding(2.dp)
-                        .background(dot, CircleShape),
-                )
-            }
+            return@Column
+        }
+        val holder = card.holder
+        val name = holder?.commonName ?: card.label.ifBlank { str("card.unnamed") }
+        val kind = when {
+            holder?.isQualified5070 == true -> str("card.kind.qualified")
+            holder?.isFiscalSeal == true -> str("card.kind.fiscalSeal")
+            else -> card.model.ifBlank { card.label }
+        }
+        // Status text and color: green ready, amber PIN warning, red blocked or invalid.
+        val (status, statusColor) = when {
+            card.pinStatus == PinStatus.LOCKED -> str("pin.locked") to colors.error
+            holder?.isValidAt(Instant.now()) == false -> str("certificate.notValid") to colors.error
+            card.pinStatus == PinStatus.FINAL_TRY -> str("pin.finalTry") to colors.error
+            card.pinStatus == PinStatus.COUNT_LOW -> str("pin.countLow") to extra.warning
+            else -> str("card.ready") to colors.tertiary
+        }
+        val ready = statusColor == colors.tertiary
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Avatar(name, 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                status?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = statusColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (kind.isNotBlank()) {
+                    Text(kind, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-        if (canChange) {
-            Icon(AppIcons.SwapHoriz, contentDescription = str("card.change"), tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        HorizontalDivider(color = colors.outlineVariant)
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(Modifier.size(8.dp).background(statusColor, CircleShape))
+            Text(
+                status,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = if (ready) colors.onSurface else statusColor,
+                modifier = Modifier.weight(1f),
+            )
+            // A warning takes the whole line; the expiry date is shown while all is well.
+            if (ready && holder != null) {
+                Text(str("card.expires", formatDate(holder.notAfter)), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1)
+            }
         }
     }
 }

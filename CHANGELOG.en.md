@@ -13,6 +13,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 - Validation now says concretely why a signature is invalid or questionable: the file re-saved after signing, the
   signed content changed, a broken signature value, pages changed later (with page numbers) and added comments.
 
+### Changed
+
+- Redesigned the card section in the sidebar: a "Change" link with an icon in its header, its details in Settings > Card on a click, the certificate kind (qualified
+  e-signature, fiscal seal) or card model under the name, and "Ready" or the PIN/certificate warning with the expiry date below.
+
 ### Fixed
 
 - The app held on to too much memory: the Java heap is capped at 2 GB and unused memory is returned to the system when
