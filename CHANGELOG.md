@@ -21,8 +21,9 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ### Düzeltilenler
 
-- Uygulama çok bellek tutuyordu: Java heap'i 2 GB ile sınırlandı ve boşta kullanılmayan bellek sisteme geri veriliyor
-  (PDF önizlemesinden kalan sayfa görüntüleri artık birikmiyor).
+- Uygulama çok bellek tutuyordu: Java heap'i 64 MB ile başlayıp 2 GB ile sınırlandı, boşta kalınca tam bir çöp toplama
+  ile kullanılmayan bellek sisteme geri veriliyor (PDF önizlemesinden kalan sayfa görüntüleri artık birikmiyor) ve
+  önizlemede yakınlaştırılmış sayfalar en fazla 2560 piksel genişliğinde çizilip ötesinde büyütülüyor.
 - Çok sayıda dosya doğrulanırken bellek ve ağ yükü: aynı anda en fazla dört dosya doğrulanır, CRL ve ara sertifika
   indirmeleri birkaç dakika önbellekte tutulur (100 dosyada aynı CRL 100 kez indirilmez). B-LT imzada da aynı önbellek kullanılır.
 - Kart ekranına dönerken (ör. imza bittikten sonra kenar çubuğundaki karta tıklanınca) önceki ekran bir an küçülen

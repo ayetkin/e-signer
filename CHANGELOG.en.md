@@ -20,8 +20,9 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ### Fixed
 
-- The app held on to too much memory: the Java heap is capped at 2 GB and unused memory is returned to the system when
-  idle (page images left over from the PDF preview no longer pile up).
+- The app held on to too much memory: the Java heap starts at 64 MB and is capped at 2 GB, a full garbage collection
+  when idle returns unused memory to the system (page images left over from the PDF preview no longer pile up), and
+  zoomed preview pages are rendered at most 2560 pixels wide and scaled up beyond that.
 - Memory and network load when validating many files: at most four files are validated at once, and CRL and
   intermediate certificate downloads are cached for a few minutes (100 files no longer download the same CRL 100 times).
   B-LT signing uses the same cache.

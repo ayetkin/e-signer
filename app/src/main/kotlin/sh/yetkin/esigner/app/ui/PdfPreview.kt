@@ -547,8 +547,11 @@ private fun StampContent(stamp: StampOnPage, scale: Float, height: Float, accent
 /** The font the signed PDF's stamp text uses, so the preview's text is as wide as in the PDF. */
 private val StampFont = FontFamily(Font("stamp-font", VisibleStamp.fontData))
 
-/** Widest page image in pixels; beyond it a zoomed page is scaled up instead of rendered larger. */
-private const val MAX_RENDER_PIXELS = 4096f
+/**
+ * Widest page image in pixels; beyond it a zoomed page is scaled up instead of rendered larger. An A4 page this wide
+ * costs about 37 MB per copy (heap, Skia, GPU texture); at 4096 px it was 95 MB.
+ */
+private const val MAX_RENDER_PIXELS = 2560f
 private const val RERENDER_DELAY_MS = 200L
 
 /** Crop box size in points and rotation, read up front so the UI thread never waits on a render. */

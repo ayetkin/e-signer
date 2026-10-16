@@ -58,8 +58,10 @@ mkdir -p "$OUT"
     --main-class sh.yetkin.esigner.app.MainKt \
     --runtime-image "$DIST/runtime" \
     --java-options "-Dorg.slf4j.simpleLogger.defaultLogLevel=warn" \
+    --java-options "-Xms64m" \
     --java-options "-Xmx2g" \
     --java-options "-XX:G1PeriodicGCInterval=10000" \
+    --java-options "-XX:-G1PeriodicGCInvokesConcurrent" \
     --java-options "-XX:MinHeapFreeRatio=10" \
     --java-options "-XX:MaxHeapFreeRatio=30" \
     --java-options "--add-modules=jdk.crypto.cryptoki" \
