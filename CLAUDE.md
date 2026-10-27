@@ -17,7 +17,7 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
   - `DocumentSigner`: herhangi bir `SignatureTokenConnection` ile imzalar. DSS'in üç adımlı akışı
     (`getDataToSign` → `token.sign` → `signDocument`) ayrı tutuldu, ileride bölünmüş imzalama buraya oturacak.
     Çıktı önce geçici dosyaya yazılır, sonra yerine taşınır. Var olan dosyanın üzerine asla yazmaz.
-    PAdES çıktı soneki (`-imzali`/`-signed`) arayüz dilinden gelir. `SigningLevel` (B-B / B-T / B-LT) ve `TSPSource`
+    PAdES çıktı soneki her dilde `-signed`. `SigningLevel` (B-B / B-T / B-LT) ve `TSPSource`
     kurucudan gelir; zaman damgası son adımda (kart imzaladıktan sonra) alınır. B-LT zincirleri ve OCSP/CRL'i
     `certificateVerifier(TrustAnchors.bundled(), online = true)` ile çevrimiçi toplayıp gömer.
   - `HttpTimestampSource` (`Timestamping.kt`): RFC 3161 istemcisi (DSS `TSPSource`), her istekte nonce ve yanıt

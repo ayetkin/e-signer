@@ -8,6 +8,11 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Değişenler
+
+- İmzalı PDF'in adı arayüz dilinden bağımsız olarak her zaman `-signed` ile bitiyor (`rapor-signed.pdf`);
+  Türkçe arayüzdeki `-imzali` soneki kaldırıldı.
+
 ### Düzeltilenler
 
 - Kart modülü yanıt vermeyi bıraktığında (örneğin kart uygulama açıkken çıkarılınca) pencereyi kapatmak

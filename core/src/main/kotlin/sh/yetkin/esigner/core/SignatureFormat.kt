@@ -20,11 +20,11 @@ fun formatFor(file: File, mode: FormatMode): SignatureFormat =
     if (mode == FormatMode.AUTO && file.extension.equals("pdf", ignoreCase = true)) SignatureFormat.PADES
     else SignatureFormat.CADES
 
-/** [padesSuffix] is localized by the UI, e.g. "-signed" -> report-signed.pdf. */
-fun outputFileFor(input: File, format: SignatureFormat, padesSuffix: String = "-signed"): File {
+/** report.pdf -> report-signed.pdf in every UI language; report.docx -> report.docx.imz. */
+fun outputFileFor(input: File, format: SignatureFormat): File {
     val file = input.absoluteFile
     return when (format) {
-        SignatureFormat.PADES -> File(file.parentFile, file.nameWithoutExtension + padesSuffix + ".pdf")
+        SignatureFormat.PADES -> File(file.parentFile, file.nameWithoutExtension + "-signed.pdf")
         SignatureFormat.CADES -> File(file.parentFile, file.name + ".imz")
     }
 }
