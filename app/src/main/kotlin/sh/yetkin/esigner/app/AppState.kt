@@ -94,7 +94,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         .asCoroutineDispatcher()
 
     // Scans run in their own scope so a hung native call can be waited on with a timeout and reused, not queued again.
-    private val scanScope = CoroutineScope(cardThread + SupervisorJob())
+    internal val scanScope = CoroutineScope(cardThread + SupervisorJob())
     private var pendingScan: Deferred<CardScan>? = null
     private var pendingLibrary: String? = null
 
@@ -493,7 +493,11 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
      */
     fun dispose() {
         // The signing coroutine may never resume before exit, so the session is closed here, not in its finally.
-        runBlocking { withTimeoutOrNull(SCAN_TIMEOUT_MS) { withContext(cardThread) { closeActiveSession() } } }
+        // While idle there is nothing to close, and the card thread may be stuck in the module for good.
+        if (activeSession != null || (flow as? SignFlow.Confirm)?.verifying == true) {
+            // Not withContext: it would wait for the hung card thread even after the timeout, join does not.
+            runBlocking { withTimeoutOrNull(SCAN_TIMEOUT_MS) { scanScope.launch { closeActiveSession() }.join() } }
+        }
         cardThread.close()
     }
 

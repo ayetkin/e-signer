@@ -8,6 +8,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Fixed
+
+- Closing the window no longer freezes the app when the card module stops answering (for example after the card
+  is pulled while the app is open): it quits at once, or after at most 10 seconds while signing.
+
 ## [0.6.0] - 2026-10-16
 
 ### Added

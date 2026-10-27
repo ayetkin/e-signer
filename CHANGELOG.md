@@ -8,6 +8,11 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Düzeltilenler
+
+- Kart modülü yanıt vermeyi bıraktığında (örneğin kart uygulama açıkken çıkarılınca) pencereyi kapatmak
+  uygulamayı dondurmuyor: imza sürmüyorsa hemen, sürüyorsa en fazla 10 saniye bekleyip kapanıyor.
+
 ## [0.6.0] - 2026-10-16
 
 ### Eklenenler

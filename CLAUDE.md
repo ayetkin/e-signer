@@ -170,6 +170,10 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   `isValidFiscalSeal` ile 5070'ten ayrı gösterilir. İmzalamada `CertificateInfo.preferredSigner` geçerli
   nonRepudiation anahtarından sonra mali mührü seçer; arayüzde "Mali mühür, Vergi Kimlik No ..." görünür (gerçek kartla denenmedi). Kamu SM bazı özetleri DER değil sunulan PEM dosyası üzerinden yayımlıyor.
 - Kart tespiti gerçek AKİS kartla doğrulandı: PIN'siz slot/token okuma, slot ID 1, açık imza sertifikası okunabiliyor.
+- **Kart çıkarılınca modül takılabiliyor:** macOS'ta kart uygulama açıkken çıkarılınca `C_GetSlotList` geri dönmedi
+  (thread dump); tek `card` thread'i kalıcı olarak bloke, kart algılama yeniden başlatmadan geri gelmiyor. Kart
+  thread'ini `withTimeoutOrNull { withContext(cardThread) { ... } }` ile bekleme, zaman aşımında da bekler;
+  `scanScope.async`/`launch` + `await`/`join` kullan.
 - Headless ekran görüntüsü: `ImageComposeScene` + Skiko linux; imajda `libgl1` ve font (Inter/DejaVu) gerekir.
 - Compose 1.7.3'te sürükle-bırak: `Modifier.dragAndDropTarget` + `event.nativeEvent as DropTargetDropEvent`
   (eski `DragData` API'si hata veriyor).
