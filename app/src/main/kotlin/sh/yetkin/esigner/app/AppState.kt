@@ -411,7 +411,6 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         val library = settings.libraryPath
         val reason = this.reason
         val location = settings.location
-        val padesSuffix = strings["output.padesSuffix"]
         val jobs = files.map { it to formatFor(it, mode) }
         val level = settings.level
         val stamp = visibleStamp
@@ -450,7 +449,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
                     }
                     flow = SignFlow.Signing(index, jobs.size, input.name)
                     results += try {
-                        val output = outputFileFor(input, format, padesSuffix)
+                        val output = outputFileFor(input, format)
                         FileResult(input, withContext(cardThread) { signer.sign(input, format, session.connection, key.entry, output, positions[input]) })
                     } catch (e: SigningException) {
                         batchStopped = e.stopsBatch

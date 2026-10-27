@@ -8,6 +8,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Changed
+
+- Signed PDFs always end in `-signed` (`report-signed.pdf`) whatever the interface language; the Turkish
+  interface no longer uses `-imzali`.
+
 ### Fixed
 
 - Closing the window no longer freezes the app when the card module stops answering (for example after the card

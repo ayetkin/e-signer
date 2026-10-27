@@ -195,7 +195,7 @@ class DocumentSignerTest {
 
     @Test
     fun `output names`() {
-        assertEquals("a-imzali.pdf", outputFileFor(File("/x/a.pdf"), SignatureFormat.PADES, "-imzali").name)
+        assertEquals("a-signed.pdf", outputFileFor(File("/x/a.pdf"), SignatureFormat.PADES).name)
         assertEquals("a.docx.imz", outputFileFor(File("/x/a.docx"), SignatureFormat.CADES).name)
     }
 
