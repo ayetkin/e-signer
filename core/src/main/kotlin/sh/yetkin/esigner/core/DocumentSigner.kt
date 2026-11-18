@@ -69,18 +69,28 @@ class DocumentSigner(
         if (output.exists()) throw SigningException(SigningError.OUTPUT_EXISTS, output.name)
         if (level.needsTimestamp && timestampSource == null) throw SigningException(SigningError.TIMESTAMP_NOT_CONFIGURED)
 
-        val document = FileDocument(input)
-        val signed = when (format) {
-            SignatureFormat.PADES -> signWith(
-                PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
-                document, padesParameters(key, input, stampAt), token, key,
-            )
-            SignatureFormat.CADES -> signWith(
-                CAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
-                document, cadesParameters(key), token, key,
-            )
+        // Created before the card signs, so an unwritable folder fails before a card signature and a paid timestamp.
+        val temp = try {
+            File.createTempFile(".${output.name}.", ".tmp", output.absoluteFile.parentFile)
+        } catch (e: Exception) {
+            throw SigningException(SigningError.WRITE_FAILED, output.name, e)
         }
-        writeAtomically(signed, output)
+        try {
+            val document = FileDocument(input)
+            val signed = when (format) {
+                SignatureFormat.PADES -> signWith(
+                    PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
+                    document, padesParameters(key, input, stampAt), token, key,
+                )
+                SignatureFormat.CADES -> signWith(
+                    CAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
+                    document, cadesParameters(key), token, key,
+                )
+            }
+            writeAtomically(signed, temp, output)
+        } finally {
+            temp.delete()
+        }
         return output
     }
 
@@ -217,17 +227,14 @@ class DocumentSigner(
         throw SigningException(SigningError.FILE_UNSUPPORTED, cause = e)
     }
 
-    /** Writes next to the target and moves into place, so a failure never leaves a half-written output. */
-    private fun writeAtomically(document: DSSDocument, output: File) {
-        val temp = File.createTempFile(".${output.name}.", ".tmp", output.absoluteFile.parentFile)
+    /** Writes to [temp] next to the target and moves into place, so a failure never leaves a half-written output. */
+    private fun writeAtomically(document: DSSDocument, temp: File, output: File) {
         try {
             temp.outputStream().use { document.writeTo(it) }
             // No REPLACE_EXISTING: fails instead of overwriting a file created in the meantime.
             Files.move(temp.toPath(), output.toPath())
         } catch (e: Exception) {
             throw SigningException(SigningError.WRITE_FAILED, output.name, e)
-        } finally {
-            temp.delete()
         }
     }
 }

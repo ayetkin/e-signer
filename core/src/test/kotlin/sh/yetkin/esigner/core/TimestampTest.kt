@@ -1,6 +1,11 @@
 package sh.yetkin.esigner.core
 
+import eu.europa.esig.dss.cades.CAdESSignatureParameters
+import eu.europa.esig.dss.cades.signature.CAdESService
 import eu.europa.esig.dss.enumerations.DigestAlgorithm
+import eu.europa.esig.dss.enumerations.SignatureLevel
+import eu.europa.esig.dss.enumerations.SignaturePackaging
+import eu.europa.esig.dss.model.FileDocument
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.bouncycastle.tsp.TimeStampToken
@@ -118,6 +123,41 @@ class TimestampTest {
     }
 
     @Test
+    fun `a content timestamp alone does not count as a proven signing time`() {
+        val input = File(dir, "notes.txt").apply { writeText("hello") }
+        val signed = File(dir, "notes.txt.imz")
+        pki.signerToken().use { token ->
+            val key = token.keys.single()
+            val service = CAdESService(certificateVerifier(pki.anchors, online = false)).apply { setTspSource(HttpTimestampSource(pki.tsaUrl)) }
+            val parameters = CAdESSignatureParameters().apply {
+                signatureLevel = SignatureLevel.CAdES_BASELINE_B
+                signaturePackaging = SignaturePackaging.ENVELOPING
+                digestAlgorithm = DigestAlgorithm.SHA256
+                signingCertificate = key.certificate
+                certificateChain = key.certificateChain.toList()
+            }
+            val document = FileDocument(input)
+            // Made before the signature, so it covers the content only.
+            parameters.contentTimestamps = listOf(service.getContentTimestamp(document, parameters))
+            val value = token.sign(service.getDataToSign(document, parameters), DigestAlgorithm.SHA256, key)
+            service.signDocument(document, parameters, value).save(signed.path)
+        }
+        assertEquals(1, pki.tsaRequests.get(), "the file carries a timestamp")
+        val check = offlineValidator().validate(signed).signatures.single()
+        assertNull(check.timestampTime)
+        assertFalse(check.trustedTimestamp)
+    }
+
+    @Test
+    fun `a tsa address the http client cannot use is unreachable, and the scheme ignores case`() {
+        for (bad in listOf("http:zd.kamusm.gov.tr", "ftp://tsa.example.com", "not an address")) {
+            val e = assertFailsWith<SigningException>(bad) { HttpTimestampSource(bad).test() }
+            assertEquals(SigningError.TIMESTAMP_UNREACHABLE, e.error, bad)
+        }
+        HttpTimestampSource(pki.tsaUrl.replaceFirst("http://", "HTTP://")).test()
+    }
+
+    @Test
     fun `timestamp level without a tsa is refused before the card is used`() {
         val e = assertFailsWith<SigningException> {
             pki.signerToken().use { DocumentSigner(SigningLevel.BASELINE_T, null).sign(pdf(), SignatureFormat.PADES, it, it.keys.single()) }
@@ -139,6 +179,16 @@ class TimestampTest {
         assertTrue(e.stopsBatch)
         assertTrue(!e.isCardError)
         assertTrue(dir.listFiles()!!.none { it.name != input.name })
+    }
+
+    @Test
+    fun `an unwritable output folder fails before the card signs and a timestamp is bought`() {
+        val output = File(dir, "missing/doc-signed.pdf")
+        val e = assertFailsWith<SigningException> {
+            pki.signerToken().use { signer(SigningLevel.BASELINE_T).sign(pdf(), SignatureFormat.PADES, it, it.keys.single(), output) }
+        }
+        assertEquals(SigningError.WRITE_FAILED, e.error)
+        assertEquals(0, pki.tsaRequests.get())
     }
 
     @Test

@@ -126,7 +126,9 @@ class SignatureValidator(
             val signature = diagnostic.getSignatureById(id)
             val signingCertificate = signature?.signingCertificate?.binaries?.let(::parseCertificate)
             val indication = simple.getIndication(id)
-            val timestamp = signature?.timestampList?.filter { it.productionTime != null }?.minByOrNull { it.productionTime }
+            // Content timestamps are made before signing and prove nothing about the signing time.
+            val timestamp = signature?.timestampList?.filter { it.type.coversSignature() && it.productionTime != null }
+                ?.minByOrNull { it.productionTime }
             val pages = signature?.let(::changedPages).orEmpty()
             val problems = signature?.let { problemsOf(it, pages) }.orEmpty()
             SignatureCheck(
