@@ -17,6 +17,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ### Düzeltilenler
 
+- Ayarlarda "Parolayı unut" kaydediliyor. Önceden zaman damgası sunucusu tanımlıyken kayıt bir test zaman
+  damgası istiyor ve hiçbir ayar kaydedilmiyordu.
 - Kart modülü yanıt vermeyi bıraktığında (örneğin kart uygulama açıkken çıkarılınca) pencereyi kapatmak
   uygulamayı dondurmuyor: imza sürmüyorsa hemen, sürüyorsa en fazla 10 saniye bekleyip kapanıyor.
 

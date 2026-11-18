@@ -148,6 +148,18 @@ class SigningSettings(private val persist: Boolean = true) {
                 authType == TsaAuthType.KAMU_SM && (user.toLongOrNull() == null || !hasPassword)
             )
 
+    /**
+     * Whether the settings dialog must get a test timestamp before saving these values. A timestamp server
+     * is saved only once it answered with these credentials: when its values change, and when a timestamp
+     * level is chosen. An empty [newPassword] forgets the kept one and leaves nothing to test with; Sign then
+     * stays disabled on a timestamp level until a new password passes the check.
+     */
+    fun needsTsaCheck(level: SigningLevel, url: String, authType: TsaAuthType, user: String, newPassword: CharArray?): Boolean {
+        if (newPassword?.isEmpty() == true) return false
+        val tsaChanged = url.trim() != tsaUrl || authType != this.authType || user.trim() != this.user || newPassword != null
+        return (tsaChanged && (level.needsTimestamp || url.isNotBlank())) || (level.needsTimestamp && !this.level.needsTimestamp)
+    }
+
     /** Host of the TSA for summaries, e.g. "zd.kamusm.gov.tr". */
     val tsaHost: String get() = runCatching { java.net.URI(tsaUrl.trim()).host }.getOrNull() ?: tsaUrl.trim()
 
