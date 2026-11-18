@@ -12,8 +12,8 @@ systems. If you try them, please [report the result](https://github.com/ayetkin/
 - **A smart card reader.** Most USB readers work with the driver built into the operating system. If
   yours isn't detected, install the driver from the reader's manufacturer.
 - **The driver of your e-signature card (PKCS#11).** Your certificate provider (Kamu SM, E-GÜVEN,
-  E-Tuğra, TürkTrust and others) gives you the driver with the card; Kamu SM also offers it on its
-  [driver download page](https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/).
+  E-Tuğra, TürkTrust and others) gives you the driver with the card; the AKİS driver is also on TÜBİTAK BİLGEM's
+  [AKİS support page](https://akiskart.bilgem.tubitak.gov.tr/en/support/).
   For AKİS cards, the app looks for it here:
 
   | System | Driver file |

@@ -12,6 +12,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 - İmzalı PDF'in adı arayüz dilinden bağımsız olarak her zaman `-signed` ile bitiyor (`rapor-signed.pdf`);
   Türkçe arayüzdeki `-imzali` soneki kaldırıldı.
+- Kart ekranındaki sürücü indirme bağlantısı TÜBİTAK BİLGEM'in AKİS destek sayfasını açıyor
+  (https://akiskart.bilgem.tubitak.gov.tr/en/support/).
 
 ### Düzeltilenler
 

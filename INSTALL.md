@@ -12,9 +12,9 @@ Denerseniz sonucu [bildirmeniz](https://github.com/ayetkin/e-signer/issues) çok
 - **Akıllı kart okuyucu.** USB okuyucuların çoğu işletim sisteminin kendi sürücüsüyle çalışır.
   Okuyucunuz algılanmazsa üreticisinin sürücüsünü kurun.
 - **E-imza kartınızın sürücüsü (PKCS#11).** Sürücüyü sertifikanızı aldığınız sağlayıcı (Kamu SM,
-  E-GÜVEN, E-Tuğra, TürkTrust ve diğerleri) kartla birlikte verir; Kamu SM ayrıca
-  [sürücü yükleme sayfasında](https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/)
-  sunar. AKİS kartlar için uygulamanın aradığı yerler:
+  E-GÜVEN, E-Tuğra, TürkTrust ve diğerleri) kartla birlikte verir; AKİS sürücüsü ayrıca TÜBİTAK BİLGEM'in
+  [AKİS destek sayfasında](https://akiskart.bilgem.tubitak.gov.tr/en/support/)
+  bulunur. AKİS kartlar için uygulamanın aradığı yerler:
 
   | Sistem | Sürücü dosyası |
   | --- | --- |
