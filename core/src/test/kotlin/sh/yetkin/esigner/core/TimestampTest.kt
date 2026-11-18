@@ -142,6 +142,40 @@ class TimestampTest {
     }
 
     @Test
+    fun `a revoked signing certificate stops a baseline lt batch and leaves no output`() {
+        LocalPki(revokeSigner = true).use { revoked ->
+            val input = pdf()
+            val e = assertFailsWith<SigningException> {
+                revoked.signerToken().use {
+                    DocumentSigner(SigningLevel.BASELINE_LT, HttpTimestampSource(revoked.tsaUrl), certificateVerifier(revoked.anchors, online = true))
+                        .sign(input, SignatureFormat.PADES, it, it.keys.single())
+                }
+            }
+            assertEquals(SigningError.CERTIFICATE_REVOKED, e.error, e.technicalDetail)
+            assertTrue(e.stopsBatch)
+            assertEquals(0, revoked.tsaRequests.get(), "refused before a timestamp is bought")
+            assertTrue(dir.listFiles()!!.none { it.name != input.name })
+        }
+    }
+
+    @Test
+    fun `a revoked earlier signer of the pdf does not stop the batch`() {
+        LocalPki(revokeSigner = true).use { revoked ->
+            // B-B checks no revocation, so the revoked person could sign; the co-signer then adds a B-LT signature.
+            val first = revoked.signerToken().use { DocumentSigner(SigningLevel.BASELINE_B).sign(pdf(), SignatureFormat.PADES, it, it.keys.single()) }
+            // DSS refuses to extend a file whose earlier signer is revoked: a file problem, the batch goes on.
+            val e = assertFailsWith<SigningException> {
+                revoked.signerToken(coSigner = true).use {
+                    DocumentSigner(SigningLevel.BASELINE_LT, HttpTimestampSource(revoked.tsaUrl), certificateVerifier(revoked.anchors, online = true))
+                        .sign(first, SignatureFormat.PADES, it, it.keys.single())
+                }
+            }
+            assertEquals(SigningError.FILE_UNSUPPORTED, e.error, e.technicalDetail)
+            assertFalse(e.stopsBatch)
+        }
+    }
+
+    @Test
     fun `kamu sm identity header is accepted with the right password`() {
         LocalPki(kamuSmCustomer = 12345L to "s3cret").use { tsa ->
             val digest = MessageDigest.getInstance("SHA-256").digest("data".toByteArray())

@@ -37,7 +37,7 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
     Modül, SunPKCS11 ile aynı `PKCS11.getInstance` önbelleğini paylaşır (aynı init bayrakları kullanılmalı).
   - `CardSession`: tek login denemesi. Gerçek slot ID'si ile açılır (`Pkcs11SignatureToken(..., slotId, -1, "")`,
     DSS bu durumda `slot = <id>` yazar). PIN dizisinin sahipliğini alır, `close()`'da sıfırlar.
-  - `SigningException(error: SigningError, subject)`: `stopsBatch` (kart hataları + `TIMESTAMP_*`,
+  - `SigningException(error: SigningError, subject)`: `stopsBatch` (kart hataları + `TIMESTAMP_*`, `CERTIFICATE_REVOKED`,
     `REVOCATION_UNAVAILABLE`) ise toplu imza durur, dosya hatasıysa devam eder.
     `cardError()` SunPKCS11'in `CKR_*` kodlarını `SigningError`'a çevirir.
   - `CertificateInfo`: TC no yalnızca maskeli tutulur (`12*******01`). `isQualified5070`: sertifikada

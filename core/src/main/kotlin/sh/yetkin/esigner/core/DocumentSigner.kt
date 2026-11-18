@@ -91,13 +91,13 @@ class DocumentSigner(
         token: SignatureTokenConnection,
         key: DSSPrivateKeyEntry,
     ): DSSDocument {
-        val toSign: ToBeSigned = fileStep { service.getDataToSign(document, parameters) }
+        val toSign: ToBeSigned = fileStep(key) { service.getDataToSign(document, parameters) }
         val value = try {
             token.sign(toSign, digestAlgorithm, key)
         } catch (e: Exception) {
             throw cardError(e)
         }
-        return fileStep { service.signDocument(document, parameters, value) }
+        return fileStep(key) { service.signDocument(document, parameters, value) }
     }
 
     private fun padesParameters(key: DSSPrivateKeyEntry, input: File, stampAt: StampPosition?) = PAdESSignatureParameters().apply {
@@ -109,6 +109,8 @@ class DocumentSigner(
         digestAlgorithm = this@DocumentSigner.digestAlgorithm
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
+        // B-LT: refuse a revoked certificate before the card signs and a timestamp is bought.
+        isCheckCertificateRevocation = level == SigningLevel.BASELINE_LT
         imageParameters = stamp?.let { visibleWidget(it, key, bLevel().signingDate, input, stampAt) } ?: invisibleWidget(input)
         this@DocumentSigner.reason?.trim()?.takeIf { it.isNotEmpty() }?.let { reason = it }
         this@DocumentSigner.location?.trim()?.takeIf { it.isNotEmpty() }?.let { location = it }
@@ -178,6 +180,8 @@ class DocumentSigner(
         digestAlgorithm = this@DocumentSigner.digestAlgorithm
         signingCertificate = key.certificate
         certificateChain = key.certificateChain.toList()
+        // B-LT: refuse a revoked certificate before the card signs and a timestamp is bought.
+        isCheckCertificateRevocation = level == SigningLevel.BASELINE_LT
     }
 
     private companion object {
@@ -191,16 +195,24 @@ class DocumentSigner(
 
     /**
      * Document steps. A timestamp failure surfaces from inside DSS, possibly wrapped; a DSS alert during
-     * B-LT means revocation data was missing. Anything else is a problem with the file.
+     * B-LT means a certificate of the [signer]'s chain is revoked or revocation data was missing; both stop the batch.
+     * Anything else, such as a revoked earlier signer of the PDF, is a problem with the file.
      */
-    private inline fun <T> fileStep(block: () -> T): T = try {
+    private inline fun <T> fileStep(signer: DSSPrivateKeyEntry, block: () -> T): T = try {
         block()
     } catch (e: Exception) {
         val chain = generateSequence<Throwable>(e) { it.cause }
         chain.filterIsInstance<SigningException>().firstOrNull()?.let { throw it }
         val alert = chain.filterIsInstance<AlertException>().firstOrNull()
-        if (alert != null && level == SigningLevel.BASELINE_LT && "revocation" in alert.message.orEmpty().lowercase()) {
-            throw SigningException(SigningError.REVOCATION_UNAVAILABLE, cause = e)
+        if (alert != null && level == SigningLevel.BASELINE_LT) {
+            // DSS: "Revoked/Suspended certificate(s) detected. [C-<id>: ...]" names every revoked certificate of
+            // every signature in the file, and "Revocation data is missing ...".
+            val message = alert.message.orEmpty()
+            val text = message.lowercase()
+            if ("revoked" in text && signer.certificateChain.any { it.dssIdAsString in message }) {
+                throw SigningException(SigningError.CERTIFICATE_REVOKED, cause = e)
+            }
+            if ("revocation" in text) throw SigningException(SigningError.REVOCATION_UNAVAILABLE, cause = e)
         }
         throw SigningException(SigningError.FILE_UNSUPPORTED, cause = e)
     }

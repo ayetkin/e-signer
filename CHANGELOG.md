@@ -19,6 +19,9 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 - Ayarlarda "Parolayı unut" kaydediliyor. Önceden zaman damgası sunucusu tanımlıyken kayıt bir test zaman
   damgası istiyor ve hiçbir ayar kaydedilmiyordu.
+- Uzun dönemli (B-LT) imzada imza sertifikası iptal edilmişse toplu imza ilk dosyada
+  duruyor ve iptal hatası gösteriliyor. Önceden her dosya "desteklenmiyor" diye geçiyor, her biri için kart
+  imzası ve zaman damgası harcanıyordu.
 - Kart modülü yanıt vermeyi bıraktığında (örneğin kart uygulama açıkken çıkarılınca) pencereyi kapatmak
   uygulamayı dondurmuyor: imza sürmüyorsa hemen, sürüyorsa en fazla 10 saniye bekleyip kapanıyor.
 
