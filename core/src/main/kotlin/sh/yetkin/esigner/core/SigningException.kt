@@ -31,7 +31,9 @@ enum class SigningError(val isCardError: Boolean, val stopsBatch: Boolean) {
     TIMESTAMP_REJECTED(false, stopsBatch = true),
     TIMESTAMP_FAILED(false, stopsBatch = true),
     /** B-LT: certificate status (OCSP/CRL) could not be fetched for the signer or the TSA. */
-    REVOCATION_UNAVAILABLE(false, stopsBatch = true);
+    REVOCATION_UNAVAILABLE(false, stopsBatch = true),
+    /** B-LT: the signing certificate or one of its issuers is revoked or suspended. */
+    CERTIFICATE_REVOKED(false, stopsBatch = true);
 
     constructor(isCardError: Boolean) : this(isCardError, isCardError)
 }

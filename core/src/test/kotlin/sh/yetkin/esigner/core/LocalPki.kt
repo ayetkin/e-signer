@@ -11,6 +11,7 @@ import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.BasicConstraints
 import org.bouncycastle.asn1.x509.CRLDistPoint
+import org.bouncycastle.asn1.x509.CRLReason
 import org.bouncycastle.asn1.x509.DistributionPoint
 import org.bouncycastle.asn1.x509.DistributionPointName
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage
@@ -59,6 +60,7 @@ import javax.crypto.spec.SecretKeySpec
  */
 class LocalPki(
     private val kamuSmCustomer: Pair<Long, String>? = null,
+    private val revokeSigner: Boolean = false,
 ) : AutoCloseable {
     private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val base = "http://127.0.0.1:${server.address.port}"
@@ -85,6 +87,14 @@ class LocalPki(
         )
     }
 
+    // Made only for the test that needs a second person; RSA key generation is slow.
+    private val coSigner by lazy {
+        val keys = rsa()
+        keys to certificate(X500Name("C=TR,CN=Local Co-signer"), CA_NAME, keys, caKeys.private) {
+            addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.nonRepudiation or KeyUsage.digitalSignature))
+        }
+    }
+
     private val tsaKeys = rsa()
     val tsaCertificate: X509Certificate = certificate(X500Name("C=TR,CN=Local TSA"), CA_NAME, tsaKeys, caKeys.private) {
         addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.digitalSignature))
@@ -93,6 +103,7 @@ class LocalPki(
 
     private val crl: ByteArray = X509v2CRLBuilder(CA_NAME, Date())
         .setNextUpdate(Date.from(Instant.now().plus(7, ChronoUnit.DAYS)))
+        .apply { if (revokeSigner) addCRLEntry(signerCertificate.serialNumber, Date(), CRLReason.keyCompromise) }
         .build(JcaContentSignerBuilder("SHA256withRSA").build(caKeys.private))
         .encoded
 
@@ -107,11 +118,12 @@ class LocalPki(
         server.start()
     }
 
-    /** The signer key with its chain, like a card would offer it. */
-    fun signerToken(): Pkcs12SignatureToken {
+    /** The signer key with its chain, like a card would offer it; [coSigner] is a second person, never revoked. */
+    fun signerToken(coSigner: Boolean = false): Pkcs12SignatureToken {
         val keyStore = KeyStore.getInstance("PKCS12").apply {
             load(null, null)
-            setKeyEntry("signer", signerKeys.private, password, arrayOf(signerCertificate, caCertificate))
+            val (keys, cert) = if (coSigner) this@LocalPki.coSigner else signerKeys to signerCertificate
+            setKeyEntry("signer", keys.private, password, arrayOf(cert, caCertificate))
         }
         val bytes = ByteArrayOutputStream().also { keyStore.store(it, password) }.toByteArray()
         return Pkcs12SignatureToken(bytes, KeyStore.PasswordProtection(password))
