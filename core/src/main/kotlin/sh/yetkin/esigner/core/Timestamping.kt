@@ -83,12 +83,12 @@ class HttpTimestampSource(
         val nonce = BigInteger(64, random)
         val request = generator.generate(ASN1ObjectIdentifier(digestAlgorithm.oid), digest, nonce)
 
-        val uri = try {
-            URI(url.trim()).also { require(it.scheme == "http" || it.scheme == "https") }
+        // newBuilder refuses schemes other than http(s), in any case, and addresses without a host ("http:host").
+        val builder = try {
+            HttpRequest.newBuilder(URI(url.trim()))
         } catch (e: Exception) {
             throw SigningException(SigningError.TIMESTAMP_UNREACHABLE, url, e)
         }
-        val builder = HttpRequest.newBuilder(uri)
             .timeout(timeout)
             .header("Content-Type", "application/timestamp-query")
             .POST(HttpRequest.BodyPublishers.ofByteArray(request.encoded))

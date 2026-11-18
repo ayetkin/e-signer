@@ -17,6 +17,16 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ### Düzeltilenler
 
+- Doğrulamada imzadan önce alınmış içerik zaman damgası artık imza zamanının kanıtı olarak gösterilmiyor.
+  Önceden yalnızca içerik damgası olan bir imza "resmi zaman damgası" etiketi alıyordu.
+- 5120 pt'den geniş PDF sayfaları (plotter çizimi, afiş) önizlemede uygulamayı kapatmıyor.
+- Uzun PDF'lerde hızlı kaydırınca ekrandan çıkan sayfalar çizilmiyor, görünen sayfa daha çabuk geliyor.
+- Hatalı zaman damgası adresi (`http:zd.kamusm.gov.tr` gibi) ayar penceresini "test ediliyor" durumunda
+  bırakmıyor, "sunucuya ulaşılamadı" hatası veriyor. Büyük harfli `HTTPS://` adresler de kabul ediliyor.
+- Çıktı klasörüne yazılamıyorsa (salt okunur disk ya da paylaşım) hata kart imzalamadan ve zaman damgası
+  alınmadan veriliyor. Önceden her dosya için kart imzası ve ücretli zaman damgası harcanıyordu.
+- Kart kütüphanesi olarak seçilen dosya yüklenemiyorsa "kart işlemi başarısız" yerine "kart kütüphanesi
+  yüklenemedi" hatası gösteriliyor.
 - Ayarlarda "Parolayı unut" kaydediliyor. Önceden zaman damgası sunucusu tanımlıyken kayıt bir test zaman
   damgası istiyor ve hiçbir ayar kaydedilmiyordu.
 - Uzun dönemli (B-LT) imzada imza sertifikası iptal edilmişse toplu imza ilk dosyada

@@ -2,11 +2,23 @@ package sh.yetkin.esigner.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CardScannerTest {
+    @Test
+    fun `a file that is not a pkcs11 library is a library error`() {
+        val junk = java.io.File.createTempFile("not-a-driver", ".dylib").apply { writeBytes(ByteArray(64) { it.toByte() }) }
+        try {
+            val e = assertFailsWith<SigningException> { CardScanner.scan(junk.path) }
+            assertEquals(SigningError.LIBRARY_LOAD_FAILED, e.error, e.technicalDetail)
+        } finally {
+            junk.delete()
+        }
+    }
+
     @Test
     fun `pin status from token flags`() {
         assertEquals(PinStatus.OK, CardScanner.pinStatusOf(0x0D))

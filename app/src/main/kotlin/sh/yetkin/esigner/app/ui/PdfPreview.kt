@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
@@ -394,13 +395,14 @@ private fun PdfPage(
     // Rendered at the screen's pixel size (Retina included), so the page is never scaled up. Rounded up to a
     // quarter so small width changes reuse the image, and capped so a deep zoom does not exhaust memory.
     val widthPx = with(LocalDensity.current) { width.toPx() }
-    val renderScale = (ceil(widthPx / page.shownWidth * 4f) / 4f).coerceIn(0.5f, MAX_RENDER_PIXELS / page.shownWidth)
+    val renderScale = renderScale(widthPx, page.shownWidth)
     var image by remember(pdf, index) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(pdf, index, renderScale) {
         // While pinching, render only once the zoom settles; the previous image stays until then.
         if (image != null) delay(RERENDER_DELAY_MS)
         image = withContext(Dispatchers.IO) {
-            runCatching { synchronized(pdf.doc) { pdf.renderer.renderImage(index, renderScale) }.toComposeImageBitmap() }.getOrNull()
+            // A page scrolled away while waiting for the lock is not rendered.
+            runCatching { synchronized(pdf.doc) { ensureActive(); pdf.renderer.renderImage(index, renderScale) }.toComposeImageBitmap() }.getOrNull()
         } ?: image
     }
     // Stamp coordinates are unrotated page coordinates; rotated pages keep the default spot.
@@ -552,6 +554,13 @@ private val StampFont = FontFamily(Font("stamp-font", VisibleStamp.fontData))
  * costs about 37 MB per copy (heap, Skia, GPU texture); at 4096 px it was 95 MB.
  */
 private const val MAX_RENDER_PIXELS = 2560f
+
+/**
+ * Scale for a page [shownWidth] pt wide shown [widthPx] pixels wide: rounded up to a quarter, at least 0.5, and capped
+ * at [MAX_RENDER_PIXELS] wide. The cap wins on very wide pages (over 5120 pt), where it is below 0.5.
+ */
+internal fun renderScale(widthPx: Float, shownWidth: Float): Float =
+    (ceil(widthPx / shownWidth * 4f) / 4f).coerceAtLeast(0.5f).coerceAtMost(MAX_RENDER_PIXELS / shownWidth)
 private const val RERENDER_DELAY_MS = 200L
 
 /** Crop box size in points and rotation, read up front so the UI thread never waits on a render. */

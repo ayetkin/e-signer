@@ -17,6 +17,16 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ### Fixed
 
+- Verification no longer shows a content timestamp, made before signing, as proof of the signing time.
+  Before, a signature with only a content timestamp got the "official timestamp" label.
+- PDF pages wider than 5120 pt (plotter drawings, posters) no longer close the app in the preview.
+- In long PDFs, pages scrolled out of view are no longer rendered, so the visible page appears sooner.
+- A malformed timestamp address (such as `http:zd.kamusm.gov.tr`) no longer leaves the settings window stuck
+  on "testing"; it shows "server unreachable". Addresses in upper case (`HTTPS://`) are accepted too.
+- When the output folder cannot be written (read-only disk or share), the error comes before the card
+  signs and a timestamp is bought. Before, each file used a card signature and a paid timestamp.
+- A card library file that cannot be loaded shows "the card library could not be loaded" instead of "the card
+  operation failed".
 - "Forget password" in Settings is saved. Before, with a timestamp server set, saving asked for a test
   timestamp and no setting was saved.
 - A long-term (B-LT) batch stops at the first file when the signing certificate is revoked,

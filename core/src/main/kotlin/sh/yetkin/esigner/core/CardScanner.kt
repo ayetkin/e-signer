@@ -40,6 +40,9 @@ object CardScanner {
         }
         val raw = try {
             Pkcs11Scanner.scan(libraryPath)
+        } catch (e: java.io.IOException) {
+            // The JDK could not load it (dlopen failed or no C_GetFunctionList): not a PKCS#11 library for this machine.
+            throw SigningException(SigningError.LIBRARY_LOAD_FAILED, libraryPath, e)
         } catch (e: Throwable) {
             if (e is Exception || e is LinkageError) throw cardError(e) else throw e
         }
