@@ -143,11 +143,7 @@ fun SettingsDialog(state: AppState) {
             clearKept -> CharArray(0)
             else -> null
         }
-        val tsaChanged = url.trim() != settings.tsaUrl || auth != settings.authType || user.trim() != settings.user || newPassword != null
-        // A timestamp server is saved only once it gave a timestamp with these credentials: when its values change,
-        // and when a timestamp level is chosen.
-        val check = (tsaChanged && (level.needsTimestamp || url.isNotBlank())) || (level.needsTimestamp && !settings.level.needsTimestamp)
-        if (!check) {
+        if (!settings.needsTsaCheck(level, url, auth, user, newPassword)) {
             settings.update(level, url, auth, user, newPassword)
             password = ""
             saveOthers()
@@ -167,18 +163,22 @@ fun SettingsDialog(state: AppState) {
         val savedUser = user
         testing = true
         scope.launch {
-            val error = state.testTimestamp(source, credentials)
-            testing = false
-            if (error == null) {
-                settings.update(savedLevel, savedUrl, savedAuth, savedUser, newPassword)
-                password = ""
-                clearKept = false
-                saveOthers()
-                state.closeSettings()
-            } else {
+            try {
+                val error = state.testTimestamp(source, credentials)
+                testing = false
+                if (error == null) {
+                    settings.update(savedLevel, savedUrl, savedAuth, savedUser, newPassword)
+                    password = ""
+                    clearKept = false
+                    saveOthers()
+                    state.closeSettings()
+                } else {
+                    tsaError = error
+                    state.settingsSection = SettingsSection.TIMESTAMP
+                }
+            } finally {
+                // Also when the dialog closes during the test; update() keeps its own copy.
                 newPassword?.fill('\u0000')
-                tsaError = error
-                state.settingsSection = SettingsSection.TIMESTAMP
             }
         }
     }

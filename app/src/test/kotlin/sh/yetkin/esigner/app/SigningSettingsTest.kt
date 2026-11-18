@@ -48,4 +48,20 @@ class SigningSettingsTest {
         settings.setForTest(SigningLevel.BASELINE_T, SigningSettings.KAMU_SM_URL, TsaAuthType.BASIC)
         assertTrue(settings.missingTsa, "signing stays blocked")
     }
+
+    @Test
+    fun `forgetting the kept password saves without a test timestamp`() {
+        val url = "http://tsa.example.com"
+        val settings = SigningSettings(persist = false)
+        settings.setForTest(SigningLevel.BASELINE_T, url, TsaAuthType.BASIC, "user", "pw")
+        assertFalse(settings.missingTsa)
+
+        assertTrue(settings.needsTsaCheck(SigningLevel.BASELINE_T, url, TsaAuthType.BASIC, "user", "new".toCharArray()))
+        assertFalse(settings.needsTsaCheck(SigningLevel.BASELINE_T, url, TsaAuthType.BASIC, "user", null))
+        assertFalse(settings.needsTsaCheck(SigningLevel.BASELINE_T, url, TsaAuthType.BASIC, "user", CharArray(0)))
+
+        settings.update(SigningLevel.BASELINE_T, url, TsaAuthType.BASIC, "user", CharArray(0))
+        assertFalse(settings.hasPassword)
+        assertTrue(settings.missingTsa, "signing is blocked until a new password passes the check")
+    }
 }

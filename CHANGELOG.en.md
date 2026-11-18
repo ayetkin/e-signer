@@ -17,6 +17,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ### Fixed
 
+- "Forget password" in Settings is saved. Before, with a timestamp server set, saving asked for a test
+  timestamp and no setting was saved.
 - Closing the window no longer freezes the app when the card module stops answering (for example after the card
   is pulled while the app is open): it quits at once, or after at most 10 seconds while signing.
 
