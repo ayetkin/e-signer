@@ -134,8 +134,8 @@ fun CardSelectScreen(state: AppState) {
     }
 }
 
-/** Kamu SM's driver download page (AKİS middleware for Windows, macOS and Linux). */
-private const val DRIVER_URL = "https://kamusm.bilgem.tubitak.gov.tr/islemler/surucu_yukleme_servisi/"
+/** TÜBİTAK BİLGEM's AKİS support page (AKİS middleware for Windows, macOS and Linux). */
+private const val DRIVER_URL = "https://akiskart.bilgem.tubitak.gov.tr/en/support/"
 
 /** Where to get the AKİS card driver: what it is for, what to do after installing, and the download button. */
 @Composable

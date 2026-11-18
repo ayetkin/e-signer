@@ -12,6 +12,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 - Signed PDFs always end in `-signed` (`report-signed.pdf`) whatever the interface language; the Turkish
   interface no longer uses `-imzali`.
+- The driver download link on the card screen opens TÜBİTAK BİLGEM's AKİS support page
+  (https://akiskart.bilgem.tubitak.gov.tr/en/support/).
 
 ### Fixed
 
