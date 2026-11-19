@@ -75,6 +75,38 @@ jobs:
             --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
             --output build/package/runtime
 
+      # Developer ID signing and notarization (tools/package-mac.sh). Without the secrets (forks) the disk image is
+      # ad-hoc signed and macOS asks users to allow it in System Settings.
+      - name: macOS signing setup
+        if: matrix.os == 'macos'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then
+            echo "::warning::No MACOS_CERT_P12 secret: the disk image is not signed with a Developer ID"; exit 0
+          fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -hex 16)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -f pkcs12 -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/notary.p8"
+          {
+            echo "SIGN_IDENTITY=Developer ID Application"
+            echo "NOTARY_KEY=$RUNNER_TEMP/notary.p8"
+            echo "NOTARY_KEY_ID=$APPLE_API_KEY_ID"
+            echo "NOTARY_ISSUER=$APPLE_API_ISSUER_ID"
+          } >> "$GITHUB_ENV"
+
       - name: macOS disk image
         if: matrix.os == 'macos'
         run: |

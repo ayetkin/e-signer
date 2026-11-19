@@ -1,7 +1,17 @@
 package sh.yetkin.esigner.app
 
+import com.sun.net.httpserver.HttpServer
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.nio.file.Files
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UpdatesTest {
@@ -15,5 +25,56 @@ class UpdatesTest {
         assertFalse(Updates.isNewer("0.4.1-rc1", "0.4.1"))
         assertTrue(Updates.isNewer("0.5.0", "0.5.0-rc1"))
         assertFalse(Updates.isNewer("0.5.0-rc2", "0.5.0-rc1"))
+    }
+
+    // Field order as GitHub's releases API returns it; the uploader object sits before the digest.
+    private fun asset(name: String, digest: String?) = """
+        {"url":"https://api.github.com/x","id":1,"name":"$name","label":"",
+         "uploader":{"login":"someone","id":2,"type":"User"},
+         "content_type":"application/octet-stream","state":"uploaded","size":10,
+         ${if (digest == null) "" else "\"digest\":\"sha256:$digest\","}
+         "download_count":0,"created_at":"2026-11-19T10:00:00Z","updated_at":"2026-11-19T10:00:00Z",
+         "browser_download_url":"https://github.com/ayetkin/e-signer/releases/download/v0.7.0/$name"}
+    """
+
+    @Test
+    fun findsThePlatformAssetWithItsDigest() {
+        val a = "a".repeat(64)
+        val b = "b".repeat(64)
+        val json = """{"tag_name":"v0.7.0","assets":[
+            ${asset("E-Signer-0.7.0-macos-arm64.dmg", a)},
+            ${asset("E-Signer-0.7.0-macos-x64.dmg", b)},
+            ${asset("E-Signer-0.7.0-windows-x64.msi", null)}]}"""
+        val found = Updates.asset(json, "-macos-x64.dmg")
+        assertEquals(b, found?.sha256)
+        assertEquals("E-Signer-0.7.0-macos-x64.dmg", found?.name)
+        assertEquals(a, Updates.asset(json, "-macos-arm64.dmg")?.sha256)
+        // No digest, nothing to check the download against.
+        assertNull(Updates.asset(json, "-windows-x64.msi"))
+        assertNull(Updates.asset(json.replace("https://github.com/ayetkin/", "https://example.com/ayetkin/"), "-macos-x64.dmg"))
+    }
+
+    @Test
+    fun downloadKeepsOnlyAMatchingFile() {
+        val body = "package bytes".toByteArray()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { it.sendResponseHeaders(200, body.size.toLong()); it.responseBody.use { out -> out.write(body) } }
+        server.start()
+        val dir = Files.createTempDirectory("updates").toFile()
+        try {
+            val url = "http://127.0.0.1:${server.address.port}/v0.7.0/E-Signer-0.7.0-macos-arm64.dmg"
+            val sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body))
+
+            assertFailsWith<IOException> { Updates.download(Asset(url, "0".repeat(64)), dir) }
+            assertEquals(0, dir.listFiles()!!.size)
+
+            val file = Updates.download(Asset(url, sha256), dir)
+            assertEquals("E-Signer-0.7.0-macos-arm64.dmg", file.name)
+            assertContentEquals(body, file.readBytes())
+            assertEquals(1, dir.listFiles()!!.size)
+        } finally {
+            server.stop(0)
+            dir.deleteRecursively()
+        }
     }
 }

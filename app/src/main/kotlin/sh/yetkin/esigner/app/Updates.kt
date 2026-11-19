@@ -1,19 +1,34 @@
 package sh.yetkin.esigner.app
 
+import java.io.File
 import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.time.Duration
+import java.util.HexFormat
 import java.util.Properties
 
 sealed interface UpdateCheck {
     data object Idle : UpdateCheck
     data object Checking : UpdateCheck
     data object UpToDate : UpdateCheck
-    data class Available(val version: String) : UpdateCheck
+    /** [asset]: this platform's package, downloaded in the app; without one the releases page is opened. */
+    data class Available(val version: String, val asset: Asset? = null, val downloadFailed: Boolean = false) : UpdateCheck
+    data class Downloading(val version: String) : UpdateCheck
+    data class Downloaded(val version: String, val file: File) : UpdateCheck
     data object Failed : UpdateCheck
+}
+
+/** A release package and the SHA-256 GitHub computed when it was uploaded. */
+data class Asset(val url: String, val sha256: String) {
+    val name: String get() = url.substringAfterLast('/')
 }
 
 /** App version and the latest GitHub release; asked once at startup and when the user checks. */
@@ -31,15 +46,75 @@ object Updates {
             .header("Accept", "application/vnd.github+json")
             .timeout(Duration.ofSeconds(10))
             .build()
-        val response = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
-            .use { it.send(request, HttpResponse.BodyHandlers.ofString()) }
+        val response = client().use { it.send(request, HttpResponse.BodyHandlers.ofString()) }
         // 404: no release published yet.
         if (response.statusCode() == 404) return UpdateCheck.UpToDate
         if (response.statusCode() != 200) throw IOException("GitHub answered ${response.statusCode()}")
         val latest = Regex("\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").find(response.body())?.groupValues?.get(1)
             ?: throw IOException("No tag_name in the GitHub answer")
-        return if (isNewer(latest, current)) UpdateCheck.Available(latest) else UpdateCheck.UpToDate
+        if (!isNewer(latest, current)) return UpdateCheck.UpToDate
+        return UpdateCheck.Available(latest, platformSuffix()?.let { asset(response.body(), it) })
     }
+
+    /** The release package for this machine, as named by the release workflow; null on Linux (deb or tar.gz). */
+    private fun platformSuffix(): String? {
+        val os = System.getProperty("os.name").lowercase()
+        val arm = System.getProperty("os.arch") in setOf("aarch64", "arm64")
+        return when {
+            os.startsWith("mac") -> if (arm) "-macos-arm64.dmg" else "-macos-x64.dmg"
+            os.startsWith("windows") -> "-windows-x64.msi"
+            else -> null
+        }
+    }
+
+    /**
+     * The asset of the release answer whose name ends in [suffix], with its digest. Both are fields of the same asset
+     * object (no braces between them); an asset without a digest is not offered, since it could not be checked.
+     */
+    internal fun asset(json: String, suffix: String): Asset? {
+        val pattern = Regex(
+            "\"digest\"\\s*:\\s*\"sha256:([0-9a-f]{64})\"[^{}]*?" +
+                "\"browser_download_url\"\\s*:\\s*\"(" + Regex.escape("$REPOSITORY_URL/releases/download/") +
+                "[^\"/]+/[^\"/]+" + Regex.escape(suffix) + ")\""
+        )
+        return pattern.find(json)?.let { Asset(it.groupValues[2], it.groupValues[1]) }
+    }
+
+    /** The user's Downloads folder, or their home folder where there is none. */
+    fun downloadDir(): File {
+        val home = File(System.getProperty("user.home"))
+        return File(home, "Downloads").takeIf { it.isDirectory } ?: home
+    }
+
+    /**
+     * Downloads [asset] into [dir] and checks its SHA-256 before it gets its real name, so a broken or altered
+     * download never sits there under the package name. An earlier copy with the same name is replaced.
+     */
+    fun download(asset: Asset, dir: File): File {
+        val target = File(dir, asset.name)
+        val part = File(dir, asset.name + ".part")
+        val request = HttpRequest.newBuilder(URI(asset.url)).timeout(Duration.ofSeconds(30)).build()
+        // The body is read before the client closes: close() waits for unfinished exchanges.
+        try {
+            client().use { client ->
+                val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
+                DigestInputStream(response.body(), MessageDigest.getInstance("SHA-256")).use { input ->
+                    if (response.statusCode() != 200) throw IOException("GitHub answered ${response.statusCode()}")
+                    part.outputStream().use { input.copyTo(it) }
+                    val sha256 = HexFormat.of().formatHex(input.messageDigest.digest())
+                    if (sha256 != asset.sha256) throw IOException("${asset.name}: SHA-256 mismatch")
+                }
+            }
+            Files.move(part.toPath(), target.toPath(), REPLACE_EXISTING, ATOMIC_MOVE)
+        } finally {
+            part.delete()
+        }
+        return target
+    }
+
+    // Release downloads redirect to GitHub's file host; NORMAL never follows https to http.
+    private fun client(): HttpClient =
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build()
 
     /**
      * Numeric comparison of dotted versions ("0.10.0" > "0.9.3"). With equal numbers a release is newer than a

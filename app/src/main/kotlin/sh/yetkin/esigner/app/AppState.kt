@@ -378,11 +378,23 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
 
     /** [quiet]: the check the user did not ask for (at startup); its failure is not shown. */
     fun checkForUpdates(quiet: Boolean = false) {
-        if (updateCheck == UpdateCheck.Checking) return
+        if (updateCheck == UpdateCheck.Checking || updateCheck is UpdateCheck.Downloading) return
         updateCheck = UpdateCheck.Checking
         scope.launch {
             val result = withContext(Dispatchers.IO) { runCatching { Updates.check() }.getOrDefault(UpdateCheck.Failed) }
             updateCheck = if (quiet && result == UpdateCheck.Failed) UpdateCheck.Idle else result
+        }
+    }
+
+    /** Downloads the update's package into the Downloads folder, then hands it to [open] (the installer starts). */
+    fun downloadUpdate(open: (File) -> Unit) {
+        val available = updateCheck as? UpdateCheck.Available ?: return
+        val asset = available.asset ?: return
+        updateCheck = UpdateCheck.Downloading(available.version)
+        scope.launch {
+            val file = withContext(Dispatchers.IO) { runCatching { Updates.download(asset, Updates.downloadDir()) }.getOrNull() }
+            updateCheck = if (file == null) available.copy(downloadFailed = true) else UpdateCheck.Downloaded(available.version, file)
+            file?.let(open)
         }
     }
 

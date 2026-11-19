@@ -43,6 +43,14 @@ does not match `appVersion` or a changelog has no section for that version. To o
 without publishing, run the workflow by hand from the Actions tab; the packages are attached to the run
 as artifacts.
 
+The macOS packages are signed with a Developer ID and notarized by Apple. This needs these repository secrets:
+`MACOS_CERT_P12` (the Developer ID Application certificate and key, the `.p12` file in base64),
+`MACOS_CERT_PASSWORD` (the `.p12` password), `APPLE_API_KEY_P8` (the contents of an App Store Connect API key
+`.p8` with the "Developer" role), `APPLE_API_KEY_ID` and `APPLE_API_ISSUER_ID`. Without them the disk image is
+ad-hoc signed and users have to allow it in System Settings the first time. To do the same locally:
+`SIGN_IDENTITY="Developer ID Application" NOTARY_PROFILE=<profile> tools/package-mac.sh` (the profile is saved with
+`xcrun notarytool store-credentials`).
+
 ## License of contributions
 
 E-Signer is licensed under the AGPL-3.0. By submitting a contribution you agree that it is licensed

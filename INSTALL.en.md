@@ -45,8 +45,9 @@ Requires macOS 11 (Big Sur) or later.
 
 ### The first time you open it
 
-E-Signer isn't signed with an Apple Developer ID yet, so macOS stops it the first time with a message
-like "Apple could not verify 'E-Signer' is free of malware". To open it anyway:
+New releases are signed with an Apple Developer ID and notarized by Apple, so macOS opens them without a warning.
+Versions 0.6.1 and earlier are not signed: macOS stops them the first time with a message like
+"Apple could not verify 'E-Signer' is free of malware". To open one anyway:
 
 1. Click **Done** (or **OK**) on the message.
 2. Open **System Settings > Privacy & Security**, scroll down to the message about E-Signer and

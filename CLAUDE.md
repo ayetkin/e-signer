@@ -68,6 +68,8 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
   - Pencere: kart ekranı ortada küçük pencere (`SigningSettings.CARD_WINDOW_SIZE`), çalışma alanı `WindowMode`'a göre.
     macOS menüleri: Dosya, Görünüm, Pencere, Yardım (Hakkında, güncelleme denetimi, GitHub). `ui/AboutDialog.kt`:
     sürüm, geliştirici, lisans; `Updates` açılışta bir kez (Ayarlar > Genel'den kapatılabilir, `checkUpdatesAtStart`; "dev" sürümde ve sessiz denetimin hatası gösterilmez) ve kullanıcı isteyince GitHub `releases/latest`'e sorar; yeni sürüm varsa kenar çubuğunda "Güncelleme" satırı çıkar.
+    "İndir" macOS/Windows'ta platformun paketini (`-macos-arm64.dmg` vb.) İndirilenler'e indirir, GitHub API'sinin
+    `digest` (SHA-256) alanıyla karşılaştırır, sonra açar; özeti olmayan paket ve Linux için sürümler sayfası açılır.
     Sürümün tek kaynağı `gradle.properties` `appVersion` (jar'a `version.properties` olarak gömülür; release
     workflow etiketten `-PappVersion` verir, `package-mac.sh` varsayılanı buradan okur).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi
@@ -208,8 +210,11 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
 - Belgeler: ana `.md` dosyaları Türkçe, İngilizceleri `.en.md` (README, INSTALL, CONTRIBUTING, SECURITY, CHANGELOG).
   Kullanıcıya görünen her değişiklik iki changelog'da "Yayımlanmadı"/"Unreleased" altına yazılır.
   dmg'yi jpackage değil `hdiutil` üretir (jpackage'ın Applications kısayolu Finder betiğiyle yapılıyor, CI'da sessizce
-  oluşmuyor). Uygulama ad-hoc imzalı, Developer ID/notarization yok: kullanıcı ilk açılışta "Yine de Aç" der
-  (`INSTALL.md`). jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik
+  oluşmuyor). macOS imzası: `SIGN_IDENTITY` verilirse `package-mac.sh` jar içindeki dylib'leri (Skiko), her Mach-O dosyasını,
+  runtime'ı ve uygulamayı hardened runtime + `app/packaging/entitlements.plist` (JIT, `disable-library-validation`:
+  AKİS dylib'i başka ekibin imzalı) ile Developer ID imzalar; notary bilgisi varsa dmg'yi notarize edip staple'lar.
+  Release workflow bunu `MACOS_CERT_P12` vb. secret'larla yapar (`CONTRIBUTING.md`), secret yoksa ad-hoc imzaya düşer.
+  **Developer ID imzası ve notarization henüz gerçek hesapla denenmedi.** jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik
   jpackage'a 1.0.0 verip `Info.plist`'e gerçek sürümü (ör. 0.4.1) yazar ve ad-hoc yeniden imzalar.
 
 ## Yol haritası

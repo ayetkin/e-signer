@@ -15,6 +15,12 @@
 #   TYPE      app-image, or dmg for a disk image with the app and an Applications link (default app-image)
 #   VERSION   app version                        (default: appVersion in gradle.properties)
 #   OUT       output directory                   (default dist/mac)
+#
+# Signing (optional; without SIGN_IDENTITY the app is ad-hoc signed and macOS asks the user to allow it):
+#   SIGN_IDENTITY  codesign identity, e.g. "Developer ID Application" (must match one keychain certificate)
+#   NOTARY_PROFILE notarytool keychain profile (xcrun notarytool store-credentials), or instead
+#   NOTARY_KEY, NOTARY_KEY_ID, NOTARY_ISSUER  App Store Connect API key file, key ID and issuer ID
+# With SIGN_IDENTITY and notary credentials the output is notarized by Apple and the ticket is stapled to it.
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,6 +28,9 @@ DIST="${DIST:-$ROOT/dist/linux_arm64}"
 TYPE="${TYPE:-app-image}"
 VERSION="${VERSION:-$(sed -n 's/^appVersion=//p' "$ROOT/gradle.properties")}"
 OUT="${OUT:-$ROOT/dist/mac}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+NOTARIZE="${NOTARY_KEY:-}${NOTARY_PROFILE:-}"
+test -z "$NOTARIZE" || test -n "$SIGN_IDENTITY" || { echo "Notarization needs SIGN_IDENTITY" >&2; exit 1; }
 
 test -d "$DIST/lib" || { echo "Run the container build first: $DIST/lib not found" >&2; exit 1; }
 
@@ -73,7 +82,51 @@ if [ "$BUNDLER_VERSION" != "$VERSION" ]; then
     PLIST="$OUT/E-Signer.app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" -c "Set :CFBundleVersion $VERSION" "$PLIST"
     # Editing Info.plist breaks jpackage's ad-hoc signature; without one Apple silicon refuses to start the app.
-    codesign --force --deep --sign - "$OUT/E-Signer.app"
+    [ -n "$SIGN_IDENTITY" ] || codesign --force --deep --sign - "$OUT/E-Signer.app"
+fi
+
+sign() {
+    codesign --force --timestamp --options runtime --entitlements "$ROOT/app/packaging/entitlements.plist" \
+        --sign "$SIGN_IDENTITY" "$@"
+}
+
+notary() {
+    if [ -n "${NOTARY_KEY:-}" ]; then
+        xcrun notarytool "$@" --key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER"
+    else
+        xcrun notarytool "$@" --keychain-profile "$NOTARY_PROFILE"
+    fi
+}
+
+# Waits for Apple's verdict; on rejection prints Apple's log, which names every offending file.
+notarize() {
+    result="$(notary submit "$1" --wait)"
+    echo "$result"
+    echo "$result" | grep -q 'status: Accepted' || {
+        notary log "$(echo "$result" | sed -n 's/^ *id: //p' | head -1)" >&2
+        exit 1
+    }
+}
+
+# Developer ID signing goes inside out: native libraries packed in jars (Skiko), every Mach-O file, the bundled
+# runtime, then the app. Notarization rejects any unsigned native code, including code inside jars.
+APP="$(cd "$OUT" && pwd)/E-Signer.app"
+if [ -n "$SIGN_IDENTITY" ]; then
+    for jar in "$APP"/Contents/app/*.jar; do
+        unzip -Z1 "$jar" | grep -E '\.(dylib|jnilib)$' | while read -r entry; do
+            tmp="$(mktemp -d)"
+            unzip -q "$jar" "$entry" -d "$tmp"
+            sign "$tmp/$entry"
+            (cd "$tmp" && zip -q "$jar" "$entry")
+            rm -rf "$tmp"
+        done
+    done
+    find "$APP/Contents" -type f \( -name '*.dylib' -o -perm -u+x \) | while read -r f; do
+        if file -b "$f" | grep -q Mach-O; then sign "$f"; fi
+    done
+    sign "$APP/Contents/runtime"
+    sign "$APP"
+    codesign --verify --strict --deep "$APP"
 fi
 
 # jpackage's own dmg adds the Applications link through Finder scripting, which fails silently on build
@@ -84,6 +137,20 @@ if [ "$TYPE" = dmg ]; then
     ln -s /Applications "$STAGE/Applications"
     hdiutil create -quiet -volname "E-Signer" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$OUT/E-Signer-$VERSION.dmg"
     rm -rf "$STAGE"
+    [ -z "$SIGN_IDENTITY" ] || codesign --timestamp --sign "$SIGN_IDENTITY" "$OUT/E-Signer-$VERSION.dmg"
+fi
+
+# The ticket is stapled to what users download, so Gatekeeper can check it offline: the disk image, or the app.
+if [ -n "$NOTARIZE" ]; then
+    if [ "$TYPE" = dmg ]; then
+        notarize "$OUT/E-Signer-$VERSION.dmg"
+        xcrun stapler staple "$OUT/E-Signer-$VERSION.dmg"
+    else
+        ditto -c -k --keepParent "$APP" "$OUT/E-Signer-notarize.zip"
+        notarize "$OUT/E-Signer-notarize.zip"
+        rm "$OUT/E-Signer-notarize.zip"
+        xcrun stapler staple "$APP"
+    fi
 fi
 
 ls -d "$OUT"/E-Signer*

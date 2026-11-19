@@ -48,7 +48,6 @@ import sh.yetkin.esigner.app.SignFlow
 import sh.yetkin.esigner.app.StampStyle
 import sh.yetkin.esigner.app.Tab
 import sh.yetkin.esigner.app.UpdateCheck
-import sh.yetkin.esigner.app.Updates
 import sh.yetkin.esigner.app.i18n.str
 import sh.yetkin.esigner.core.FormatMode
 
@@ -115,13 +114,15 @@ private fun Sidebar(state: AppState) {
         if (state.tab == Tab.SIGN) SignButton(state)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            (state.updateCheck as? UpdateCheck.Available)?.let {
+            val update = state.updateCheck
+            updateStatus(update)?.let { status ->
                 SidebarRow(
                     icon = AppIcons.Download,
                     label = str("sidebar.update"),
-                    value = str("about.update.available", it.version),
-                    enabled = true,
-                    onClick = { openLink(Updates.RELEASES_URL) },
+                    value = status,
+                    enabled = update !is UpdateCheck.Downloading,
+                    onClick = { if (update is UpdateCheck.Downloaded) openFile(update.file) else startUpdate(state) },
+                    valueColor = MaterialTheme.colorScheme.error.takeIf { update is UpdateCheck.Available && update.downloadFailed },
                 )
             }
             CardHeader(state)

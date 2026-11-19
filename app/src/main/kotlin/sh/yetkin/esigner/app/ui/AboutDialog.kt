@@ -138,15 +138,40 @@ private fun UpdateRow(state: AppState) {
         UpdateCheck.Idle -> null to null
         UpdateCheck.Checking -> str("about.update.checking") to null
         UpdateCheck.UpToDate -> str("about.update.upToDate") to MaterialTheme.colorScheme.tertiary
-        is UpdateCheck.Available -> str("about.update.available", check.version) to MaterialTheme.colorScheme.primary
+        is UpdateCheck.Available ->
+            updateStatus(check) to MaterialTheme.colorScheme.run { if (check.downloadFailed) error else primary }
+        is UpdateCheck.Downloading -> updateStatus(check) to MaterialTheme.colorScheme.primary
+        is UpdateCheck.Downloaded -> updateStatus(check) to MaterialTheme.colorScheme.tertiary
         UpdateCheck.Failed -> str("about.update.failed") to MaterialTheme.colorScheme.error
     }
     // Before any check the row explains when updates are looked up; afterwards it shows the result.
-    AboutRow(AppIcons.Download, str("settings.updates"), text, note = if (check == UpdateCheck.Idle) str("about.update.idle") else null, valueColor = color) {
+    val note = when (check) {
+        UpdateCheck.Idle -> str("about.update.idle")
+        is UpdateCheck.Downloaded -> str("about.update.installNote", check.file.name)
+        else -> null
+    }
+    AboutRow(AppIcons.Download, str("settings.updates"), text, note = note, valueColor = color) {
         when (check) {
-            UpdateCheck.Checking -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            is UpdateCheck.Available -> Button(onClick = { openLink(Updates.RELEASES_URL) }) { Text(str("about.update.download")) }
+            UpdateCheck.Checking, is UpdateCheck.Downloading -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            is UpdateCheck.Available -> Button(onClick = { startUpdate(state) }) { Text(str("about.update.download")) }
+            is UpdateCheck.Downloaded -> Button(onClick = { openFile(check.file) }) { Text(str("result.open")) }
             else -> TextButton(onClick = state::checkForUpdates) { Text(str("about.update.check")) }
         }
     }
+}
+
+/** The update's text in the sidebar and in About, once a newer release is known; null before. */
+@Composable
+internal fun updateStatus(check: UpdateCheck): String? = when (check) {
+    is UpdateCheck.Available ->
+        if (check.downloadFailed) str("about.update.downloadFailed", check.version) else str("about.update.available", check.version)
+    is UpdateCheck.Downloading -> str("about.update.downloading", check.version)
+    is UpdateCheck.Downloaded -> str("about.update.downloaded", check.version)
+    else -> null
+}
+
+/** Downloads this platform's package in the app and opens it; without one (Linux), opens the releases page. */
+internal fun startUpdate(state: AppState) {
+    val check = state.updateCheck as? UpdateCheck.Available ?: return
+    if (check.asset == null) openLink(Updates.RELEASES_URL) else state.downloadUpdate(::openFile)
 }

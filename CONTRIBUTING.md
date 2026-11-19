@@ -44,6 +44,14 @@ eşleşmezse ya da değişiklik günlüğünde o sürümün bölümü yoksa work
 paketleri denemek için Actions sekmesinden workflow'u elle çalıştırın; paketler çalışmanın
 artifact'ları olarak iner.
 
+macOS paketleri Developer ID ile imzalanıp Apple'a onaylatılır (notarization). Bunun için depoda şu secret'lar
+gerekir: `MACOS_CERT_P12` (Developer ID Application sertifikası ve anahtarı, `.p12` dosyasının base64'ü),
+`MACOS_CERT_PASSWORD` (`.p12` parolası), `APPLE_API_KEY_P8` (App Store Connect API anahtarı `.p8` içeriği,
+"Developer" rolü), `APPLE_API_KEY_ID` ve `APPLE_API_ISSUER_ID`. Secret'lar yoksa disk görüntüsü ad-hoc imzalanır
+ve kullanıcı ilk açılışta Sistem Ayarları'ndan izin vermek zorunda kalır. Yerelde aynısı için
+`SIGN_IDENTITY="Developer ID Application" NOTARY_PROFILE=<profil> tools/package-mac.sh` (profil
+`xcrun notarytool store-credentials` ile kaydedilir).
+
 ## Katkıların lisansı
 
 E-Signer AGPL-3.0 ile lisanslanmıştır. Katkı göndererek katkınızın AGPL-3.0 ile lisanslanmasını kabul

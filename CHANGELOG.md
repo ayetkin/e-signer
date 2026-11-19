@@ -8,6 +8,13 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Değişenler
+
+- macOS paketleri Apple Developer ID ile imzalı ve Apple tarafından onaylı (notarized). Uygulama ilk açılışta
+  Sistem Ayarları > Gizlilik ve Güvenlik'ten izin istemeden açılıyor.
+- Yeni sürüm macOS ve Windows'ta uygulamanın içinden indiriliyor: "İndir" paketi (`.dmg` / `.msi`) İndirilenler
+  klasörüne indirir, GitHub'ın yayımladığı SHA-256 özetiyle karşılaştırır ve açar. Linux'ta sürümler sayfası açılıyor.
+
 ## [0.6.1] - 2026-11-19
 
 ### Değişenler

@@ -8,6 +8,13 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Changed
+
+- The macOS packages are signed with an Apple Developer ID and notarized by Apple. The app opens the first time
+  without having to be allowed in System Settings > Privacy & Security.
+- On macOS and Windows a new version is downloaded inside the app: "Download" saves the package (`.dmg` / `.msi`)
+  to Downloads, checks it against the SHA-256 digest GitHub publishes and opens it. On Linux the releases page opens.
+
 ## [0.6.1] - 2026-11-19
 
 ### Changed

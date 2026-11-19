@@ -277,6 +277,17 @@ class ScreenshotTest {
             shot("$l-22b-about-update", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Available("0.5.0") })
             shot("$l-22c-about-checking", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Checking })
             shot("$l-22d-about-failed", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Failed })
+            shot("$l-22e-about-downloading", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Downloading("0.5.0") })
+            shot("$l-22f-about-downloaded", state(lang) {
+                ready()
+                openAbout()
+                updateCheck = UpdateCheck.Downloaded("0.5.0", File("E-Signer-0.5.0-macos-arm64.dmg"))
+            })
+            shot("$l-22g-about-download-failed", state(lang) {
+                ready()
+                openAbout()
+                updateCheck = UpdateCheck.Available("0.5.0", Asset("https://example.com/a.dmg", "0".repeat(64)), downloadFailed = true)
+            })
             shot("$l-18f-settings-no-card", state(lang) {
                 ready()
                 scan = ScanState.Ready(CardScan(1, emptyList()))

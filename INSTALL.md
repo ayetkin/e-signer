@@ -45,8 +45,9 @@ macOS 11 (Big Sur) veya sonrası gerekir.
 
 ### İlk açılışta
 
-E-Signer henüz Apple Developer ID ile imzalı değil. Bu yüzden macOS ilk açılışta "Apple, 'E-Signer'ın
-kötü amaçlı yazılım içermediğini doğrulayamadı" gibi bir uyarıyla uygulamayı durdurur. Yine de açmak için:
+Yeni sürümler Apple Developer ID ile imzalı ve Apple tarafından onaylı (notarized); macOS bunları uyarısız açar.
+0.6.1 ve önceki sürümler imzalı değil. macOS bunları ilk açılışta "Apple, 'E-Signer'ın kötü amaçlı yazılım
+içermediğini doğrulayamadı" gibi bir uyarıyla durdurur. Yine de açmak için:
 
 1. Uyarıda **Bitti**'ye (ya da **Tamam**'a) tıklayın.
 2. **Sistem Ayarları > Gizlilik ve Güvenlik** bölümünü açın, aşağıdaki E-Signer uyarısını bulun,
