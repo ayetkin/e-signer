@@ -8,6 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-19
+
 ### Changed
 
 - The macOS packages are signed with an Apple Developer ID and notarized by Apple. The app opens the first time
@@ -166,7 +168,8 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ayetkin/e-signer/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ayetkin/e-signer/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ayetkin/e-signer/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/ayetkin/e-signer/compare/v0.5.1...v0.5.2
