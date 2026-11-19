@@ -29,6 +29,13 @@ object TestKeys {
 
     const val FAKE_TAX_ID = "1234567890"
 
+    /** An 8x8 black PNG for visible stamp tests. */
+    val stampIcon: ByteArray by lazy {
+        ByteArrayOutputStream().also {
+            javax.imageio.ImageIO.write(java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", it)
+        }.toByteArray()
+    }
+
     private val plain = create(qualified = false)
     private val qualified = create(qualified = true)
     private val seal = create(qualified = false, fiscalSeal = true)

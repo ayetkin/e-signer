@@ -68,7 +68,7 @@ class CardSession private constructor(
                 } catch (_: Exception) {
                 }
                 pin.fill('\u0000')
-                                if (e is Exception || e is LinkageError) throw cardError(e) else throw e
+                if (e is Exception || e is LinkageError) throw cardError(e) else throw e
             }
         }
     }

@@ -220,9 +220,22 @@ class TimestampTest {
                         .sign(first, SignatureFormat.PADES, it, it.keys.single())
                 }
             }
-            assertEquals(SigningError.FILE_UNSUPPORTED, e.error, e.technicalDetail)
+            assertEquals(SigningError.EARLIER_SIGNATURE_INVALID, e.error, e.technicalDetail)
             assertFalse(e.stopsBatch)
+            assertEquals(0, revoked.tsaRequests.get(), "refused before the card signs and a timestamp is bought")
+            assertTrue(dir.listFiles()!!.none { it.name != "doc.pdf" && it != first })
         }
+    }
+
+    @Test
+    fun `a baseline lt co-signature keeps a valid earlier signature`() {
+        val first = pki.signerToken().use { DocumentSigner(SigningLevel.BASELINE_B).sign(pdf(), SignatureFormat.PADES, it, it.keys.single()) }
+        val second = pki.signerToken(coSigner = true).use { signer(SigningLevel.BASELINE_LT).sign(first, SignatureFormat.PADES, it, it.keys.single()) }
+        val checks = offlineValidator().validate(second).signatures
+        assertEquals(2, checks.size)
+        assertTrue(checks.all { it.verdict == Verdict.VALID }, checks.joinToString { it.messages.joinToString() })
+        // The signature timestamp, and a document timestamp DSS adds so the earlier B-B signature reaches T.
+        assertEquals(2, pki.tsaRequests.get())
     }
 
     @Test
