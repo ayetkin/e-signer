@@ -8,6 +8,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.7.2] - 2026-11-19
+
 ### Değişenler
 
 - Güncelleme satırı ayrı bir güncelleme penceresi açıyor: sürüm geçişi, ilerleme çubuğu (indirilen MB ve yüzde),
@@ -180,7 +182,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.7.1...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/ayetkin/e-signer/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/ayetkin/e-signer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ayetkin/e-signer/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ayetkin/e-signer/compare/v0.6.0...v0.6.1

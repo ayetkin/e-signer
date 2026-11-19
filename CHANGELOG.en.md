@@ -8,6 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-19
+
 ### Changed
 
 - The update row opens an update window: the version step, a progress bar (MB received and percentage), a
@@ -182,7 +184,8 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/ayetkin/e-signer/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/ayetkin/e-signer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ayetkin/e-signer/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ayetkin/e-signer/compare/v0.6.0...v0.6.1
