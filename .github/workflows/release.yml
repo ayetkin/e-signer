@@ -36,7 +36,8 @@ jobs:
           # which Debian 12 and Ubuntu 22.04 lack.
           - { os: linux, runner: ubuntu-22.04, arch: x64, compose: linux-x64 }
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # macOS jobs also wait for Apple's notary service, which can take tens of minutes.
+    timeout-minutes: 75
     defaults:
       run:
         shell: bash
@@ -75,8 +76,8 @@ jobs:
             --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
             --output build/package/runtime
 
-      # Developer ID signing and notarization (tools/package-mac.sh). Without the secrets (forks) the disk image is
-      # ad-hoc signed and macOS asks users to allow it in System Settings.
+      # Developer ID signing and notarization (tools/package-mac.sh). A run by hand without any of the secrets (forks)
+      # makes an ad-hoc signed disk image, which macOS asks users to allow in System Settings; a tag never does.
       - name: macOS signing setup
         if: matrix.os == 'macos'
         env:
@@ -86,8 +87,14 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
-          if [ -z "$MACOS_CERT_P12" ]; then
-            echo "::warning::No MACOS_CERT_P12 secret: the disk image is not signed with a Developer ID"; exit 0
+          names=(MACOS_CERT_P12 MACOS_CERT_PASSWORD APPLE_API_KEY_P8 APPLE_API_KEY_ID APPLE_API_ISSUER_ID)
+          missing=()
+          for name in "${names[@]}"; do [ -n "${!name}" ] || missing+=("$name"); done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            if [ "${#missing[@]}" -eq "${#names[@]}" ] && [ "${GITHUB_REF_TYPE}" != tag ]; then
+              echo "::warning::No signing secrets: the disk image is not signed with a Developer ID"; exit 0
+            fi
+            echo "::error::Missing signing secrets: ${missing[*]}"; exit 1
           fi
           keychain="$RUNNER_TEMP/signing.keychain-db"
           keychain_password="$(openssl rand -hex 16)"

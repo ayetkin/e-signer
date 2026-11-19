@@ -2,13 +2,15 @@ package sh.yetkin.esigner.app
 
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.HttpURLConnection
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.time.Duration
@@ -46,7 +48,8 @@ object Updates {
             .header("Accept", "application/vnd.github+json")
             .timeout(Duration.ofSeconds(10))
             .build()
-        val response = client().use { it.send(request, HttpResponse.BodyHandlers.ofString()) }
+        val response = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+            .use { it.send(request, HttpResponse.BodyHandlers.ofString()) }
         // 404: no release published yet.
         if (response.statusCode() == 404) return UpdateCheck.UpToDate
         if (response.statusCode() != 200) throw IOException("GitHub answered ${response.statusCode()}")
@@ -88,33 +91,41 @@ object Updates {
 
     /**
      * Downloads [asset] into [dir] and checks its SHA-256 before it gets its real name, so a broken or altered
-     * download never sits there under the package name. An earlier copy with the same name is replaced.
+     * download never sits there under the package name. A file already there with the same name is kept: it is
+     * returned when it is this package, otherwise the download gets a free name ("... (2).dmg").
      */
     fun download(asset: Asset, dir: File): File {
-        val target = File(dir, asset.name)
+        val existing = File(dir, asset.name)
+        if (existing.isFile && sha256(existing.inputStream()) == asset.sha256) return existing
         val part = File(dir, asset.name + ".part")
-        val request = HttpRequest.newBuilder(URI(asset.url)).timeout(Duration.ofSeconds(30)).build()
-        // The body is read before the client closes: close() waits for unfinished exchanges.
+        // HttpURLConnection has a socket read timeout; HttpClient's timeout stops at the headers, and a stalled
+        // body would leave the download running forever. GitHub redirects to its file host, https to https.
+        val connection = URI(asset.url).toURL().openConnection() as HttpURLConnection
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 30_000
         try {
-            client().use { client ->
-                val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
-                DigestInputStream(response.body(), MessageDigest.getInstance("SHA-256")).use { input ->
-                    if (response.statusCode() != 200) throw IOException("GitHub answered ${response.statusCode()}")
-                    part.outputStream().use { input.copyTo(it) }
-                    val sha256 = HexFormat.of().formatHex(input.messageDigest.digest())
-                    if (sha256 != asset.sha256) throw IOException("${asset.name}: SHA-256 mismatch")
-                }
-            }
-            Files.move(part.toPath(), target.toPath(), REPLACE_EXISTING, ATOMIC_MOVE)
+            if (connection.responseCode != 200) throw IOException("GitHub answered ${connection.responseCode}")
+            val sha256 = sha256(connection.inputStream) { input -> part.outputStream().use { input.copyTo(it) } }
+            if (sha256 != asset.sha256) throw IOException("${asset.name}: SHA-256 mismatch")
+            val target = generateSequence(1) { it + 1 }
+                .map { n -> if (n == 1) existing else File(dir, "${existing.nameWithoutExtension} ($n).${existing.extension}") }
+                .first { !it.exists() }
+            Files.move(part.toPath(), target.toPath(), ATOMIC_MOVE)
+            return target
         } finally {
+            connection.disconnect()
             part.delete()
         }
-        return target
     }
 
-    // Release downloads redirect to GitHub's file host; NORMAL never follows https to http.
-    private fun client(): HttpClient =
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build()
+    /** SHA-256 (hex) of everything [read] takes from [stream]; by default it reads the stream to its end. */
+    private fun sha256(
+        stream: InputStream,
+        read: (InputStream) -> Unit = { it.transferTo(OutputStream.nullOutputStream()) },
+    ): String = DigestInputStream(stream, MessageDigest.getInstance("SHA-256")).use { input ->
+        read(input)
+        HexFormat.of().formatHex(input.messageDigest.digest())
+    }
 
     /**
      * Numeric comparison of dotted versions ("0.10.0" > "0.9.3"). With equal numbers a release is newer than a

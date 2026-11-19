@@ -100,12 +100,12 @@ notary() {
 
 # Waits for Apple's verdict; on rejection prints Apple's log, which names every offending file.
 notarize() {
-    result="$(notary submit "$1" --wait)"
+    result="$(notary submit "$1" --wait)" || true
     echo "$result"
-    echo "$result" | grep -q 'status: Accepted' || {
-        notary log "$(echo "$result" | sed -n 's/^ *id: //p' | head -1)" >&2
-        exit 1
-    }
+    if echo "$result" | grep -q 'status: Accepted'; then return; fi
+    id="$(echo "$result" | sed -n 's/^ *id: //p' | head -1)"
+    [ -z "$id" ] || notary log "$id" >&2
+    exit 1
 }
 
 # Developer ID signing goes inside out: native libraries packed in jars (Skiko), every Mach-O file, the bundled

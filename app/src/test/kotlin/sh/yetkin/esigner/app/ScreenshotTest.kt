@@ -274,7 +274,11 @@ class ScreenshotTest {
             shot("$l-18c-settings-card", state(lang) { ready(); openSettings(SettingsSection.CARD) })
             shot("$l-18e-settings-on-card-screen", state(lang) { openSettings(SettingsSection.CARD) })
             shot("$l-22-about", state(lang) { ready(); openAbout() })
-            shot("$l-22b-about-update", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Available("0.5.0") })
+            shot("$l-22b-about-update", state(lang) {
+                ready()
+                openAbout()
+                updateCheck = UpdateCheck.Available("0.5.0", Asset("https://example.com/a.dmg", "0".repeat(64)))
+            })
             shot("$l-22c-about-checking", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Checking })
             shot("$l-22d-about-failed", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Failed })
             shot("$l-22e-about-downloading", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Downloading("0.5.0") })

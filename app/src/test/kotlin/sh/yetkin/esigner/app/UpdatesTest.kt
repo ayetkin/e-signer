@@ -1,11 +1,13 @@
 package sh.yetkin.esigner.app
 
 import com.sun.net.httpserver.HttpServer
+import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.HexFormat
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -58,7 +60,12 @@ class UpdatesTest {
     fun downloadKeepsOnlyAMatchingFile() {
         val body = "package bytes".toByteArray()
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        server.createContext("/") { it.sendResponseHeaders(200, body.size.toLong()); it.responseBody.use { out -> out.write(body) } }
+        val requests = AtomicInteger()
+        server.createContext("/") {
+            requests.incrementAndGet()
+            it.sendResponseHeaders(200, body.size.toLong())
+            it.responseBody.use { out -> out.write(body) }
+        }
         server.start()
         val dir = Files.createTempDirectory("updates").toFile()
         try {
@@ -68,10 +75,18 @@ class UpdatesTest {
             assertFailsWith<IOException> { Updates.download(Asset(url, "0".repeat(64)), dir) }
             assertEquals(0, dir.listFiles()!!.size)
 
+            // Another file under the package name is kept; the download takes the next free name.
+            File(dir, "E-Signer-0.7.0-macos-arm64.dmg").writeText("someone else's file")
             val file = Updates.download(Asset(url, sha256), dir)
-            assertEquals("E-Signer-0.7.0-macos-arm64.dmg", file.name)
+            assertEquals("E-Signer-0.7.0-macos-arm64 (2).dmg", file.name)
             assertContentEquals(body, file.readBytes())
-            assertEquals(1, dir.listFiles()!!.size)
+            assertEquals("someone else's file", File(dir, "E-Signer-0.7.0-macos-arm64.dmg").readText())
+
+            // The same package already there is returned without another request.
+            val package1 = File(dir, "E-Signer-0.7.0-macos-arm64.dmg").apply { writeBytes(body) }
+            val before = requests.get()
+            assertEquals(package1, Updates.download(Asset(url, sha256), dir))
+            assertEquals(before, requests.get())
         } finally {
             server.stop(0)
             dir.deleteRecursively()

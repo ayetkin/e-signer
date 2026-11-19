@@ -392,7 +392,16 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         val asset = available.asset ?: return
         updateCheck = UpdateCheck.Downloading(available.version)
         scope.launch {
-            val file = withContext(Dispatchers.IO) { runCatching { Updates.download(asset, Updates.downloadDir()) }.getOrNull() }
+            val file = withContext(Dispatchers.IO) {
+                try {
+                    Updates.download(asset, Updates.downloadDir())
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    System.getLogger("E-Signer").log(System.Logger.Level.WARNING, "Update download failed", e)
+                    null
+                }
+            }
             updateCheck = if (file == null) available.copy(downloadFailed = true) else UpdateCheck.Downloaded(available.version, file)
             file?.let(open)
         }

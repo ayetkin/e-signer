@@ -153,7 +153,11 @@ private fun UpdateRow(state: AppState) {
     AboutRow(AppIcons.Download, str("settings.updates"), text, note = note, valueColor = color) {
         when (check) {
             UpdateCheck.Checking, is UpdateCheck.Downloading -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            is UpdateCheck.Available -> Button(onClick = { startUpdate(state) }) { Text(str("about.update.download")) }
+            is UpdateCheck.Available -> {
+                // The download starts at once, so the release notes stay one click away.
+                if (check.asset != null) TextButton(onClick = { openLink(Updates.RELEASES_URL) }) { Text(str("about.update.notes")) }
+                Button(onClick = { startUpdate(state) }) { Text(str("about.update.download")) }
+            }
             is UpdateCheck.Downloaded -> Button(onClick = { openFile(check.file) }) { Text(str("result.open")) }
             else -> TextButton(onClick = state::checkForUpdates) { Text(str("about.update.check")) }
         }
