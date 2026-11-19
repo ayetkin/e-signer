@@ -20,6 +20,8 @@ Windows ve Linux paketleri de üretiliyor ancak henüz test edilmedi.
 - Kart olmadan PAdES ve CAdES imzalarını **doğrulama**: Türkiye'deki nitelikli elektronik sertifika
   hizmet sağlayıcılarının gömülü kök sertifikalarıyla, 5070 sayılı Kanun'a göre nitelikli sertifika ve
   mali mühür kontrolüyle.
+- **Güncellemeler:** uygulama açılışta yeni sürümü denetler. macOS ve Windows'ta paketi kendisi indirir ve
+  GitHub'ın yayımladığı SHA-256 özetiyle karşılaştırır.
 - Türkçe ve İngilizce arayüz.
 
 | Onay | Doğrulama |
@@ -28,17 +30,18 @@ Windows ve Linux paketleri de üretiliyor ancak henüz test edilmedi.
 
 ## İndirme
 
-Paketler [sürümler sayfasında](https://github.com/ayetkin/e-signer/releases):
+Bağlantılar her zaman [son sürümü](https://github.com/ayetkin/e-signer/releases/latest) indirir:
 
-| Sistem | Paket | Durum |
+| Sistem | Son sürümü indir | Durum |
 | --- | --- | --- |
-| macOS, Apple silicon | `E-Signer-<sürüm>-macos-arm64.dmg` | Test edildi |
-| macOS, Intel | `E-Signer-<sürüm>-macos-x64.dmg` | Test edildi |
-| Windows x64 | `.msi` kurulum ya da `.zip` | **Test edilmedi** |
-| Linux x64 | `.deb` ya da `.tar.gz` | **Test edilmedi** |
+| macOS, Apple silicon (M1 ve sonrası) | [`E-Signer-macos-arm64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-arm64.dmg) | Test edildi |
+| macOS, Intel | [`E-Signer-macos-x64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-x64.dmg) | Test edildi |
+| Windows x64 | [`E-Signer-windows-x64.msi`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.msi) kurulum ya da [`E-Signer-windows-x64.zip`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.zip) | **Test edilmedi** |
+| Linux x64 | [`E-Signer-linux-x64.deb`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.deb) ya da [`E-Signer-linux-x64.tar.gz`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.tar.gz) | **Test edilmedi** |
 
-Java uygulamanın içinde gelir, ayrıca kurmanız gerekmez. Gerekenler (kart sürücüsü, okuyucu) ve
-uygulamanın ilk açılışı için [INSTALL.md](INSTALL.md) dosyasına bakın. Değişiklikler
+macOS paketleri Apple Developer ID ile imzalı ve Apple tarafından onaylı (notarized), bu yüzden uyarısız
+açılır. Java uygulamanın içinde gelir, ayrıca kurmanız gerekmez. Gerekenler (kart sürücüsü, okuyucu) ve
+güncelleme için [INSTALL.md](INSTALL.md) dosyasına bakın. Değişiklikler
 [CHANGELOG.md](CHANGELOG.md) dosyasında.
 
 ## Durum

@@ -24,7 +24,7 @@ systems. If you try them, please [report the result](https://github.com/ayetkin/
 
   If the driver is installed somewhere else, set its path in **Settings > Card**.
 - **An internet connection** only for timestamped and long-term signatures, for checking certificate
-  revocation when verifying, and for the update check. Standard signatures work offline.
+  revocation when verifying, and for checking and downloading updates. Standard signatures work offline.
 
 Verifying signatures needs neither a card nor a driver.
 
@@ -35,19 +35,21 @@ The packages are on the [latest release](https://github.com/ayetkin/e-signer/rel
 Requires macOS 11 (Big Sur) or later.
 
 1. Download the disk image for your Mac:
-   - `E-Signer-<version>-macos-arm64.dmg` for Apple silicon (M1 and later),
-   - `E-Signer-<version>-macos-x64.dmg` for Intel.
+   - [`E-Signer-macos-arm64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-arm64.dmg) for Apple silicon (M1 and later),
+   - [`E-Signer-macos-x64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-x64.dmg) for Intel.
 
    Not sure which one? Apple menu > **About This Mac**: "Chip: Apple M..." is Apple silicon,
    "Processor: Intel" is Intel.
 2. Open the disk image and drag **E-Signer** onto **Applications**.
 3. Open E-Signer from Applications or Launchpad.
 
-### The first time you open it
+Versions 0.7.0 and later are signed with an Apple Developer ID and notarized by Apple. macOS opens them
+without a warning, the first time too.
 
-New releases are signed with an Apple Developer ID and notarized by Apple, so macOS opens them without a warning.
-Versions 0.6.1 and earlier are not signed: macOS stops them the first time with a message like
-"Apple could not verify 'E-Signer' is free of malware". To open one anyway:
+### Versions 0.6.1 and earlier
+
+These versions are not signed. macOS stops them the first time with a message like "Apple could not
+verify 'E-Signer' is free of malware". To open one anyway:
 
 1. Click **Done** (or **OK**) on the message.
 2. Open **System Settings > Privacy & Security**, scroll down to the message about E-Signer and
@@ -65,9 +67,9 @@ Only do this for a disk image you downloaded from this project's releases page.
 
 Windows 10 or 11, 64-bit.
 
-- **Installer:** run `E-Signer-<version>-windows-x64.msi`. E-Signer is added to the Start menu and the
+- **Installer:** run [`E-Signer-windows-x64.msi`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.msi). E-Signer is added to the Start menu and the
   desktop.
-- **Without installing:** extract `E-Signer-<version>-windows-x64.zip` to a folder and run
+- **Without installing:** extract [`E-Signer-windows-x64.zip`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.zip) to a folder and run
   `E-Signer\E-Signer.exe`.
 
 The app isn't code signed yet. If Windows SmartScreen says "Windows protected your PC", click
@@ -77,15 +79,29 @@ The app isn't code signed yet. If Windows SmartScreen says "Windows protected yo
 
 64-bit (x86_64) distributions.
 
-- **Debian and Ubuntu:** install the `.deb` package; the app goes to `/opt/e-signer` and is added to the
+- **Debian and Ubuntu:** install [`E-Signer-linux-x64.deb`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.deb); the app goes to `/opt/e-signer` and is added to the
   application menu:
 
   ```sh
-  sudo apt install ./E-Signer-<version>-linux-x64.deb
+  sudo apt install ./E-Signer-linux-x64.deb
   ```
-- **Other distributions:** extract `E-Signer-<version>-linux-x64.tar.gz` and run `E-Signer/bin/E-Signer`.
+- **Other distributions:** extract [`E-Signer-linux-x64.tar.gz`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.tar.gz) and run `E-Signer/bin/E-Signer`.
 
 The card reader needs the PC/SC service (`sudo apt install pcscd` on Debian and Ubuntu).
+
+## Updating
+
+E-Signer checks GitHub for the latest version at startup (can be turned off in **Settings > General**). When
+a new version is out, an **Update** row appears in the sidebar. On macOS you can also check by hand with
+**Help > Check for Updates**; the release notes are behind **What's new** in the window it opens.
+
+- **macOS and Windows:** **Download** saves the package to Downloads. The package is checked against the
+  SHA-256 digest GitHub publishes and opened when it matches. Quit E-Signer, then:
+  - On macOS, drag E-Signer from the opened disk image onto **Applications** and choose **Replace**.
+  - On Windows, the `.msi` installs over the old version. If you use the zip, unpack the new zip.
+- **Linux:** **Download** opens the releases page. Install the new `.deb` with the same `apt install` command.
+
+In 0.6.1 and earlier, **Download** opens the releases page on every system.
 
 ## Troubleshooting
 

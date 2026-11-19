@@ -8,6 +8,11 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Changed
+
+- Package names no longer carry the version (`E-Signer-macos-arm64.dmg`, `E-Signer-windows-x64.msi` ...). The
+  download links in README and INSTALL always get the latest version.
+
 ## [0.7.0] - 2026-11-19
 
 ### Changed

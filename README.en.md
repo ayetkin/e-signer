@@ -20,6 +20,8 @@ Windows and Linux packages are built too, but they are not tested yet.
 - **Review before signing:** a PDF preview and a confirmation that lists what is signed with which certificate.
 - **Verify** PAdES and CAdES signatures without a card, against the bundled roots of the Turkish
   qualified trust service providers, including the Law 5070 qualified certificate check and fiscal seals.
+- **Updates:** the app checks for a new version at startup. On macOS and Windows it downloads the package
+  itself and checks it against the SHA-256 digest GitHub publishes.
 - Turkish and English user interface.
 
 | Confirmation | Verification |
@@ -28,17 +30,18 @@ Windows and Linux packages are built too, but they are not tested yet.
 
 ## Download
 
-Packages are on the [releases page](https://github.com/ayetkin/e-signer/releases):
+The links always download the [latest release](https://github.com/ayetkin/e-signer/releases/latest):
 
-| System | Package | Status |
+| System | Download the latest version | Status |
 | --- | --- | --- |
-| macOS, Apple silicon | `E-Signer-<version>-macos-arm64.dmg` | Tested |
-| macOS, Intel | `E-Signer-<version>-macos-x64.dmg` | Tested |
-| Windows x64 | `.msi` installer or `.zip` | **Not tested** |
-| Linux x64 | `.deb` or `.tar.gz` | **Not tested** |
+| macOS, Apple silicon (M1 and later) | [`E-Signer-macos-arm64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-arm64.dmg) | Tested |
+| macOS, Intel | [`E-Signer-macos-x64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-x64.dmg) | Tested |
+| Windows x64 | [`E-Signer-windows-x64.msi`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.msi) installer or [`E-Signer-windows-x64.zip`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.zip) | **Not tested** |
+| Linux x64 | [`E-Signer-linux-x64.deb`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.deb) or [`E-Signer-linux-x64.tar.gz`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.tar.gz) | **Not tested** |
 
-Java is included; you don't need to install it. See [INSTALL.en.md](INSTALL.en.md) for what you need
-(card driver, reader) and how to open the app the first time. Changes are listed in
+The macOS packages are signed with an Apple Developer ID and notarized by Apple, so they open without a
+warning. Java is included; you don't need to install it. See [INSTALL.en.md](INSTALL.en.md) for what you
+need (card driver, reader) and how to update. Changes are listed in
 [CHANGELOG.en.md](CHANGELOG.en.md).
 
 ## Status

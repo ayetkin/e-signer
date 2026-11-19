@@ -54,6 +54,9 @@ class UpdatesTest {
         // No digest, nothing to check the download against.
         assertNull(Updates.asset(json, "-windows-x64.msi"))
         assertNull(Updates.asset(json.replace("https://github.com/ayetkin/", "https://example.com/ayetkin/"), "-macos-x64.dmg"))
+        // Packages without the version in their name (0.7.1 and later) are found by the same suffix.
+        val unversioned = Updates.asset(json.replace("E-Signer-0.7.0-", "E-Signer-"), "-macos-arm64.dmg")
+        assertEquals("E-Signer-macos-arm64.dmg", unversioned?.name)
     }
 
     @Test

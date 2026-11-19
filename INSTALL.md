@@ -24,7 +24,7 @@ Denerseniz sonucu [bildirmeniz](https://github.com/ayetkin/e-signer/issues) çok
 
   Sürücü başka bir yerdeyse yolunu **Ayarlar > Kart** bölümünden girin.
 - **İnternet bağlantısı** yalnızca zaman damgalı ve uzun süreli imzalar, doğrulamada sertifika iptal
-  kontrolü ve güncelleme denetimi için gerekir. Standart imza çevrimdışı çalışır.
+  kontrolü, güncelleme denetimi ve indirme için gerekir. Standart imza çevrimdışı çalışır.
 
 İmza doğrulamak için kart da sürücü de gerekmez.
 
@@ -35,19 +35,21 @@ Paketler [son sürüm](https://github.com/ayetkin/e-signer/releases/latest) sayf
 macOS 11 (Big Sur) veya sonrası gerekir.
 
 1. Mac'inize uygun disk görüntüsünü indirin:
-   - Apple silicon (M1 ve sonrası) için `E-Signer-<sürüm>-macos-arm64.dmg`,
-   - Intel için `E-Signer-<sürüm>-macos-x64.dmg`.
+   - Apple silicon (M1 ve sonrası) için [`E-Signer-macos-arm64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-arm64.dmg),
+   - Intel için [`E-Signer-macos-x64.dmg`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-macos-x64.dmg).
 
    Hangisi olduğundan emin değilseniz: Apple menüsü > **Bu Mac Hakkında**. "Çip: Apple M..." yazıyorsa
    Apple silicon, "İşlemci: Intel" yazıyorsa Intel'dir.
 2. Disk görüntüsünü açın ve **E-Signer**'ı **Uygulamalar** klasörüne sürükleyin.
 3. E-Signer'ı Uygulamalar'dan ya da Launchpad'den açın.
 
-### İlk açılışta
+0.7.0 ve sonraki sürümler Apple Developer ID ile imzalı ve Apple tarafından onaylı (notarized). macOS
+bunları ilk açılışta da uyarısız açar.
 
-Yeni sürümler Apple Developer ID ile imzalı ve Apple tarafından onaylı (notarized); macOS bunları uyarısız açar.
-0.6.1 ve önceki sürümler imzalı değil. macOS bunları ilk açılışta "Apple, 'E-Signer'ın kötü amaçlı yazılım
-içermediğini doğrulayamadı" gibi bir uyarıyla durdurur. Yine de açmak için:
+### 0.6.1 ve önceki sürümler
+
+Bu sürümler imzalı değil. macOS bunları ilk açılışta "Apple, 'E-Signer'ın kötü amaçlı yazılım içermediğini
+doğrulayamadı" gibi bir uyarıyla durdurur. Yine de açmak için:
 
 1. Uyarıda **Bitti**'ye (ya da **Tamam**'a) tıklayın.
 2. **Sistem Ayarları > Gizlilik ve Güvenlik** bölümünü açın, aşağıdaki E-Signer uyarısını bulun,
@@ -66,9 +68,9 @@ Bunu yalnızca bu projenin sürümler sayfasından indirdiğiniz disk görüntü
 
 Windows 10 veya 11, 64 bit.
 
-- **Kurulum:** `E-Signer-<sürüm>-windows-x64.msi` dosyasını çalıştırın. E-Signer Başlat menüsüne ve
+- **Kurulum:** [`E-Signer-windows-x64.msi`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.msi) dosyasını çalıştırın. E-Signer Başlat menüsüne ve
   masaüstüne eklenir.
-- **Kurulumsuz:** `E-Signer-<sürüm>-windows-x64.zip` dosyasını bir klasöre açın ve
+- **Kurulumsuz:** [`E-Signer-windows-x64.zip`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-windows-x64.zip) dosyasını bir klasöre açın ve
   `E-Signer\E-Signer.exe` dosyasını çalıştırın.
 
 Uygulama henüz kod imzalı değil. Windows SmartScreen "Windows bilgisayarınızı korudu" derse
@@ -78,16 +80,30 @@ Uygulama henüz kod imzalı değil. Windows SmartScreen "Windows bilgisayarını
 
 64 bit (x86_64) dağıtımlar.
 
-- **Debian ve Ubuntu:** `.deb` paketini kurun; uygulama `/opt/e-signer` altına kurulur ve uygulama
+- **Debian ve Ubuntu:** [`E-Signer-linux-x64.deb`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.deb) paketini kurun; uygulama `/opt/e-signer` altına kurulur ve uygulama
   menüsüne eklenir:
 
   ```sh
-  sudo apt install ./E-Signer-<sürüm>-linux-x64.deb
+  sudo apt install ./E-Signer-linux-x64.deb
   ```
-- **Diğer dağıtımlar:** `E-Signer-<sürüm>-linux-x64.tar.gz` dosyasını açın ve
+- **Diğer dağıtımlar:** [`E-Signer-linux-x64.tar.gz`](https://github.com/ayetkin/e-signer/releases/latest/download/E-Signer-linux-x64.tar.gz) dosyasını açın ve
   `E-Signer/bin/E-Signer` dosyasını çalıştırın.
 
 Kart okuyucu için PC/SC servisi gerekir (Debian ve Ubuntu'da `sudo apt install pcscd`).
+
+## Güncelleme
+
+E-Signer açılışta GitHub'daki son sürümü denetler (**Ayarlar > Genel**'den kapatılabilir). Yeni sürüm
+varsa kenar çubuğunda **Güncelleme** satırı çıkar. macOS'ta **Yardım > Güncellemeleri Denetle** ile elle de
+denetleyebilirsiniz; sürüm notları orada açılan pencerenin **Yenilikler** düğmesindedir.
+
+- **macOS ve Windows:** **İndir** paketi İndirilenler klasörüne indirir. Paket, GitHub'ın yayımladığı
+  SHA-256 özetiyle karşılaştırılır ve eşleşirse açılır. E-Signer'ı kapatın, sonra:
+  - macOS'ta açılan disk görüntüsünden E-Signer'ı **Uygulamalar**'a sürükleyin ve **Değiştir**'i seçin.
+  - Windows'ta `.msi` kurulumu eski sürümün üzerine kurar. Zip kullanıyorsanız yeni zip'i açın.
+- **Linux:** **İndir** sürümler sayfasını açar. Yeni `.deb` paketini aynı `apt install` komutuyla kurun.
+
+0.6.1 ve önceki sürümlerde **İndir** her sistemde sürümler sayfasını açar.
 
 ## Sorun giderme
 

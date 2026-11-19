@@ -8,6 +8,11 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Değişenler
+
+- Paket adlarında artık sürüm yok (`E-Signer-macos-arm64.dmg`, `E-Signer-windows-x64.msi` ...). README ve
+  INSTALL'daki indirme bağlantıları her zaman son sürümü indiriyor.
+
 ## [0.7.0] - 2026-11-19
 
 ### Değişenler

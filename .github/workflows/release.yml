@@ -53,6 +53,8 @@ jobs:
           # have no other job that would fill it.
           cache-read-only: false
 
+      # Package names carry no version, so releases/latest/download/<name> (README, INSTALL) always gets the latest
+      # release; the app's update check matches the same names by their platform suffix (Updates.kt).
       - name: Version
         run: |
           if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; fi
@@ -119,7 +121,7 @@ jobs:
         run: |
           DIST=build/package JPACKAGE="$JAVA_HOME/bin/jpackage" TYPE=dmg OUT=build/out tools/package-mac.sh
           mkdir -p build/dist
-          mv "build/out/E-Signer-$VERSION.dmg" "build/dist/E-Signer-$VERSION-macos-${{ matrix.arch }}.dmg"
+          mv "build/out/E-Signer-$VERSION.dmg" "build/dist/E-Signer-macos-${{ matrix.arch }}.dmg"
 
       # Same launcher options as tools/package-mac.sh, without the macOS-only trackpad export.
       - name: Windows and Linux app image
@@ -156,8 +158,8 @@ jobs:
           "$JAVA_HOME/bin/jpackage" --type msi --app-image build/out/E-Signer --name E-Signer --app-version "$VERSION" \
             --vendor "Ali Yetkin" --win-menu --win-shortcut --win-dir-chooser \
             --win-upgrade-uuid 2d91fa4a-9028-491f-a0c1-e00f0ea5a843 --dest build/out
-          mv build/out/E-Signer-*.msi "build/dist/E-Signer-$VERSION-windows-x64.msi"
-          (cd build/out && 7z a -tzip -bso0 "../dist/E-Signer-$VERSION-windows-x64.zip" E-Signer)
+          mv build/out/E-Signer-*.msi build/dist/E-Signer-windows-x64.msi
+          (cd build/out && 7z a -tzip -bso0 ../dist/E-Signer-windows-x64.zip E-Signer)
 
       - name: Linux package and archive
         if: matrix.os == 'linux'
@@ -166,8 +168,8 @@ jobs:
           "$JAVA_HOME/bin/jpackage" --type deb --app-image build/out/E-Signer --name E-Signer --icon app/packaging/icon.png --app-version "$VERSION" \
             --vendor "Ali Yetkin" --linux-shortcut --linux-menu-group Office --linux-app-category office \
             --linux-package-name e-signer --dest build/out
-          mv build/out/e-signer_*.deb "build/dist/E-Signer-$VERSION-linux-x64.deb"
-          tar -C build/out -czf "build/dist/E-Signer-$VERSION-linux-x64.tar.gz" E-Signer
+          mv build/out/e-signer_*.deb build/dist/E-Signer-linux-x64.deb
+          tar -C build/out -czf build/dist/E-Signer-linux-x64.tar.gz E-Signer
 
       - uses: actions/upload-artifact@v4
         with:

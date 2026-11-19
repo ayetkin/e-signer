@@ -204,7 +204,9 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   macOS `macos-15` (arm64) ve `macos-15-intel` (x64): `tools/package-mac.sh` (`TYPE=dmg`); Windows `windows-2022`
   (WiX 3 orada kurulu): jpackage app-image + `.msi` + `.zip` (`app/packaging/icon.ico`, icon.png'den üretildi);
   Linux `ubuntu-22.04` (deb bağımlılıkları buradan, 24.04 libasound2t64 ister): app-image + `.deb` + `.tar.gz`. **Windows ve Linux paketleri hiç test edilmedi.**
-  Testler `ci.yml` çağrılarak paralel koşar, geçmezse release yayımlanmaz. Etiket `gradle.properties`
+  Paket adları sürümsüz (`E-Signer-macos-arm64.dmg`, `E-Signer-linux-x64.deb` ...): README/INSTALL bağlantıları
+  `releases/latest/download/<ad>` kullanır ve uygulamanın güncelleme denetimi aynı adları platform sonekiyle
+  bulur, bu yüzden adlar değiştirilmez. Testler `ci.yml` çağrılarak paralel koşar, geçmezse release yayımlanmaz. Etiket `gradle.properties`
   `appVersion` ile aynı olmalı. Release notları yalnızca İngilizce: `tools/release-notes.sh`
   `CHANGELOG.en.md`'deki sürüm bölümünü alır; iki changelog'dan birinde bölüm yoksa workflow durur. Sürüm çıkarma adımları `CONTRIBUTING.md`.
 - Belgeler: ana `.md` dosyaları Türkçe, İngilizceleri `.en.md` (README, INSTALL, CONTRIBUTING, SECURITY, CHANGELOG).
@@ -214,7 +216,7 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
   runtime'ı ve uygulamayı hardened runtime + `app/packaging/entitlements.plist` (JIT, `disable-library-validation`:
   AKİS dylib'i başka ekibin imzalı) ile Developer ID imzalar; notary bilgisi varsa dmg'yi notarize edip staple'lar.
   Release workflow bunu `MACOS_CERT_P12` vb. secret'larla yapar (`CONTRIBUTING.md`), secret yoksa ad-hoc imzaya düşer.
-  **Developer ID imzası ve notarization henüz gerçek hesapla denenmedi.** jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik
+  0.7.0 ile doğrulandı: iki dmg de notarize edildi, indirilen dmg macOS'ta uyarısız açıldı. Hardened runtime altında AKİS kartla imza henüz denenmedi. jpackage macOS'ta 0 ile başlayan sürümü reddediyor: betik
   jpackage'a 1.0.0 verip `Info.plist`'e gerçek sürümü (ör. 0.4.1) yazar ve ad-hoc yeniden imzalar.
 
 ## Yol haritası
