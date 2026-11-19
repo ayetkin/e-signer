@@ -8,6 +8,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+## [0.7.1] - 2026-11-19
+
 ### Değişenler
 
 - Paket adlarında artık sürüm yok (`E-Signer-macos-arm64.dmg`, `E-Signer-windows-x64.msi` ...). README ve
@@ -172,7 +174,8 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 - Bölümlü ayarlar penceresi, Türkçe ve İngilizce arayüz.
 - Apple silicon ve Intel için macOS disk görüntüleri.
 
-[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.7.0...HEAD
+[Yayımlanmadı]: https://github.com/ayetkin/e-signer/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/ayetkin/e-signer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ayetkin/e-signer/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ayetkin/e-signer/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ayetkin/e-signer/compare/v0.5.2...v0.6.0

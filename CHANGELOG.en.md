@@ -8,6 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-19
+
 ### Changed
 
 - Package names no longer carry the version (`E-Signer-macos-arm64.dmg`, `E-Signer-windows-x64.msi` ...). The
@@ -173,7 +175,8 @@ First published version (macOS only).
 - Settings window with sections, Turkish and English user interface.
 - macOS disk images for Apple silicon and Intel.
 
-[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ayetkin/e-signer/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/ayetkin/e-signer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ayetkin/e-signer/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ayetkin/e-signer/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ayetkin/e-signer/compare/v0.5.2...v0.6.0
