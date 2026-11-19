@@ -68,8 +68,10 @@ Kişisel/ortama özel notlar git'e girmeyen `CLAUDE.local.md` içinde; bu dosya 
   - Pencere: kart ekranı ortada küçük pencere (`SigningSettings.CARD_WINDOW_SIZE`), çalışma alanı `WindowMode`'a göre.
     macOS menüleri: Dosya, Görünüm, Pencere, Yardım (Hakkında, güncelleme denetimi, GitHub). `ui/AboutDialog.kt`:
     sürüm, geliştirici, lisans; `Updates` açılışta bir kez (Ayarlar > Genel'den kapatılabilir, `checkUpdatesAtStart`; "dev" sürümde ve sessiz denetimin hatası gösterilmez) ve kullanıcı isteyince GitHub `releases/latest`'e sorar; yeni sürüm varsa kenar çubuğunda "Güncelleme" satırı çıkar.
-    "İndir" macOS/Windows'ta platformun paketini (`-macos-arm64.dmg` vb.) İndirilenler'e indirir, GitHub API'sinin
-    `digest` (SHA-256) alanıyla karşılaştırır, sonra açar; özeti olmayan paket ve Linux için sürümler sayfası açılır.
+    Satır ve Hakkında'daki "Güncelle" `ui/UpdateDialog.kt` penceresini açar: "İndir" macOS/Windows'ta platformun
+    paketini (`-macos-arm64.dmg` vb.) İndirilenler'e indirir (ilerleme çubuğu, "Durdur" bağlantıyı kapatır), GitHub
+    API'sinin `digest` (SHA-256) alanıyla karşılaştırır; kurulum "Kurulumu başlat" ile, kendiliğinden açılmaz.
+    İndirme pencere kapanınca sürer. Özeti olmayan paket ve Linux için sürümler sayfası açılır.
     Sürümün tek kaynağı `gradle.properties` `appVersion` (jar'a `version.properties` olarak gömülür; release
     workflow etiketten `-PappVersion` verir, `package-mac.sh` varsayılanı buradan okur).
   - i18n: `Strings` (ResourceBundle, `{0}` yer tutucu, MessageFormat değil), `str("key")`, dil tercihi

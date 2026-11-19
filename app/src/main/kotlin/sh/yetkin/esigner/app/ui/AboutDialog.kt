@@ -145,20 +145,12 @@ private fun UpdateRow(state: AppState) {
         UpdateCheck.Failed -> str("about.update.failed") to MaterialTheme.colorScheme.error
     }
     // Before any check the row explains when updates are looked up; afterwards it shows the result.
-    val note = when (check) {
-        UpdateCheck.Idle -> str("about.update.idle")
-        is UpdateCheck.Downloaded -> str("about.update.installNote", check.file.name)
-        else -> null
-    }
+    val note = if (check == UpdateCheck.Idle) str("about.update.idle") else null
     AboutRow(AppIcons.Download, str("settings.updates"), text, note = note, valueColor = color) {
         when (check) {
-            UpdateCheck.Checking, is UpdateCheck.Downloading -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            is UpdateCheck.Available -> {
-                // The download starts at once, so the release notes stay one click away.
-                if (check.asset != null) TextButton(onClick = { openLink(Updates.RELEASES_URL) }) { Text(str("about.update.notes")) }
-                Button(onClick = { startUpdate(state) }) { Text(str("about.update.download")) }
-            }
-            is UpdateCheck.Downloaded -> Button(onClick = { openFile(check.file) }) { Text(str("result.open")) }
+            UpdateCheck.Checking -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            is UpdateCheck.Available, is UpdateCheck.Downloading, is UpdateCheck.Downloaded ->
+                Button(onClick = state::openUpdate) { Text(str("update.open")) }
             else -> TextButton(onClick = state::checkForUpdates) { Text(str("about.update.check")) }
         }
     }
@@ -169,13 +161,9 @@ private fun UpdateRow(state: AppState) {
 internal fun updateStatus(check: UpdateCheck): String? = when (check) {
     is UpdateCheck.Available ->
         if (check.downloadFailed) str("about.update.downloadFailed", check.version) else str("about.update.available", check.version)
-    is UpdateCheck.Downloading -> str("about.update.downloading", check.version)
+    is UpdateCheck.Downloading ->
+        if (check.total > 0) str("about.update.downloadingPercent", check.version, (check.received * 100 / check.total).toInt())
+        else str("about.update.downloading", check.version)
     is UpdateCheck.Downloaded -> str("about.update.downloaded", check.version)
     else -> null
-}
-
-/** Downloads this platform's package in the app and opens it; without one (Linux), opens the releases page. */
-internal fun startUpdate(state: AppState) {
-    val check = state.updateCheck as? UpdateCheck.Available ?: return
-    if (check.asset == null) openLink(Updates.RELEASES_URL) else state.downloadUpdate(::openFile)
 }

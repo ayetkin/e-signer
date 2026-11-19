@@ -80,7 +80,13 @@ class UpdatesTest {
 
             // Another file under the package name is kept; the download takes the next free name.
             File(dir, "E-Signer-0.7.0-macos-arm64.dmg").writeText("someone else's file")
-            val file = Updates.download(Asset(url, sha256), dir)
+            // A throwing progress callback (the user stopped it) leaves no partial file behind.
+            assertFailsWith<IllegalStateException> { Updates.download(Asset(url, sha256), dir) { _, _ -> error("stopped") } }
+            assertEquals(listOf("E-Signer-0.7.0-macos-arm64.dmg"), dir.list()!!.toList())
+
+            var progress = 0L to 0L
+            val file = Updates.download(Asset(url, sha256), dir) { received, total -> progress = received to total }
+            assertEquals(body.size.toLong() to body.size.toLong(), progress)
             assertEquals("E-Signer-0.7.0-macos-arm64 (2).dmg", file.name)
             assertContentEquals(body, file.readBytes())
             assertEquals("someone else's file", File(dir, "E-Signer-0.7.0-macos-arm64.dmg").readText())

@@ -15,6 +15,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
@@ -329,7 +332,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
     val settingsAvailable: Boolean get() = flow == SignFlow.Idle || flow is SignFlow.Finished
 
     fun openSettings(section: SettingsSection = SettingsSection.GENERAL) {
-        if (!settingsAvailable || aboutOpen) return
+        if (!settingsAvailable || aboutOpen || updateOpen) return
         settingsSection = section
         settingsOpen = true
     }
@@ -367,7 +370,7 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         internal set
 
     fun openAbout(checkUpdates: Boolean = false) {
-        if (flow is SignFlow.Signing || flow is SignFlow.Confirm || settingsOpen) return
+        if (flow is SignFlow.Signing || flow is SignFlow.Confirm || settingsOpen || updateOpen) return
         aboutOpen = true
         if (checkUpdates) checkForUpdates()
     }
@@ -378,7 +381,8 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
 
     /** [quiet]: the check the user did not ask for (at startup); its failure is not shown. */
     fun checkForUpdates(quiet: Boolean = false) {
-        if (updateCheck == UpdateCheck.Checking || updateCheck is UpdateCheck.Downloading) return
+        // A downloaded package keeps its install step; a check would turn it back into "available".
+        if (updateCheck.let { it == UpdateCheck.Checking || it is UpdateCheck.Downloading || it is UpdateCheck.Downloaded }) return
         updateCheck = UpdateCheck.Checking
         scope.launch {
             val result = withContext(Dispatchers.IO) { runCatching { Updates.check() }.getOrDefault(UpdateCheck.Failed) }
@@ -386,25 +390,62 @@ class AppState(private val scope: CoroutineScope, persistSettings: Boolean = tru
         }
     }
 
-    /** Downloads the update's package into the Downloads folder, then hands it to [open] (the installer starts). */
-    fun downloadUpdate(open: (File) -> Unit) {
+    /** The update window: what is new, the download with its progress, and the downloaded package. */
+    var updateOpen by mutableStateOf(false)
+        private set
+    private var updateDownload: Job? = null
+    @Volatile private var closeUpdateConnection: () -> Unit = {}
+
+    /** From the sidebar's update row and About; About closes, since the window takes its place. */
+    fun openUpdate() {
+        val known = updateCheck.let { it is UpdateCheck.Available || it is UpdateCheck.Downloading || it is UpdateCheck.Downloaded }
+        if (!known || flow is SignFlow.Signing || flow is SignFlow.Confirm || settingsOpen) return
+        aboutOpen = false
+        updateOpen = true
+    }
+
+    fun closeUpdate() {
+        updateOpen = false
+    }
+
+    /**
+     * Downloads the update's package into the Downloads folder, with its progress in [updateCheck]. It goes on when
+     * the window closes; [cancelUpdateDownload] stops it and deletes the partial file.
+     */
+    fun downloadUpdate() {
         val available = updateCheck as? UpdateCheck.Available ?: return
         val asset = available.asset ?: return
         updateCheck = UpdateCheck.Downloading(available.version)
-        scope.launch {
-            val file = withContext(Dispatchers.IO) {
-                try {
-                    Updates.download(asset, Updates.downloadDir())
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    System.getLogger("E-Signer").log(System.Logger.Level.WARNING, "Update download failed", e)
-                    null
+        updateDownload = scope.launch {
+            var result: UpdateCheck = available.copy(downloadFailed = true)
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    val job = coroutineContext.job
+                    Updates.download(asset, Updates.downloadDir(), onOpen = { closeUpdateConnection = it }) { received, total ->
+                        // Stops the blocking read loop when the download is cancelled.
+                        job.ensureActive()
+                        updateCheck = UpdateCheck.Downloading(available.version, received, total)
+                    }
                 }
+                result = UpdateCheck.Downloaded(available.version, file)
+            } catch (e: CancellationException) {
+                result = available.copy(downloadFailed = false)
+                throw e
+            } catch (e: Exception) {
+                // Stop closes the connection, so the read fails with an IOException; that is the user's stop.
+                if (!isActive) result = available.copy(downloadFailed = false)
+                else System.getLogger("E-Signer").log(System.Logger.Level.WARNING, "Update download failed", e)
+            } finally {
+                updateCheck = result
+                updateDownload = null
+                closeUpdateConnection = {}
             }
-            updateCheck = if (file == null) available.copy(downloadFailed = true) else UpdateCheck.Downloaded(available.version, file)
-            file?.let(open)
         }
+    }
+
+    fun cancelUpdateDownload() {
+        updateDownload?.cancel()
+        closeUpdateConnection()
     }
 
     // Signing

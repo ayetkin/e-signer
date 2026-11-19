@@ -8,6 +8,12 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ## [Yayımlanmadı]
 
+### Değişenler
+
+- Güncelleme satırı ayrı bir güncelleme penceresi açıyor: sürüm geçişi, ilerleme çubuğu (indirilen MB ve yüzde),
+  indirmeyi durdurma, SHA-256 doğrulaması sonrası "Kurulumu başlat" ve "Klasörde göster". İndirme pencere
+  kapansa da sürüyor ve kenar çubuğunda yüzdesi görünüyor. Paket artık indirilince kendiliğinden açılmıyor.
+
 ## [0.7.1] - 2026-11-19
 
 ### Değişenler

@@ -8,6 +8,13 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ## [Unreleased]
 
+### Changed
+
+- The update row opens an update window: the version step, a progress bar (MB received and percentage), a
+  button to stop the download, and "Start installer" and "Show in folder" once the SHA-256 digest is verified.
+  The download goes on when the window closes, with its percentage in the sidebar. The package no longer opens
+  by itself when the download ends.
+
 ## [0.7.1] - 2026-11-19
 
 ### Changed

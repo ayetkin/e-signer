@@ -120,8 +120,8 @@ private fun Sidebar(state: AppState) {
                     icon = AppIcons.Download,
                     label = str("sidebar.update"),
                     value = status,
-                    enabled = update !is UpdateCheck.Downloading,
-                    onClick = { if (update is UpdateCheck.Downloaded) openFile(update.file) else startUpdate(state) },
+                    enabled = true,
+                    onClick = state::openUpdate,
                     valueColor = MaterialTheme.colorScheme.error.takeIf { update is UpdateCheck.Available && update.downloadFailed },
                 )
             }

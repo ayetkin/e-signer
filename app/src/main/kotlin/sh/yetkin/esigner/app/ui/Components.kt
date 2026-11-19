@@ -385,9 +385,11 @@ fun CertificateChips(info: CertificateInfo?) {
 }
 
 @Composable
-fun File.sizeLabel(): String {
+fun File.sizeLabel(): String = bytesLabel(length())
+
+@Composable
+fun bytesLabel(bytes: Long): String {
     val locale = LocalStrings.current.language.locale
-    val bytes = length()
     return when {
         bytes < 1024 -> "$bytes B"
         bytes < 1024 * 1024 -> String.format(locale, "%.1f KB", bytes / 1024.0)

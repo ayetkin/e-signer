@@ -281,16 +281,23 @@ class ScreenshotTest {
             })
             shot("$l-22c-about-checking", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Checking })
             shot("$l-22d-about-failed", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Failed })
-            shot("$l-22e-about-downloading", state(lang) { ready(); openAbout(); updateCheck = UpdateCheck.Downloading("0.5.0") })
-            shot("$l-22f-about-downloaded", state(lang) {
+            val update = UpdateCheck.Available("0.8.0", Asset("https://example.com/E-Signer-macos-arm64.dmg", "0".repeat(64)))
+            shot("$l-23a-update", state(lang) { ready(); updateCheck = update; openUpdate() })
+            shot("$l-23b-update-downloading", state(lang) {
                 ready()
-                openAbout()
-                updateCheck = UpdateCheck.Downloaded("0.5.0", File("E-Signer-0.5.0-macos-arm64.dmg"))
+                updateCheck = UpdateCheck.Downloading("0.8.0", 43_712_512, 102_760_448)
+                openUpdate()
             })
-            shot("$l-22g-about-download-failed", state(lang) {
+            shot("$l-23c-update-downloaded", state(lang) {
                 ready()
-                openAbout()
-                updateCheck = UpdateCheck.Available("0.5.0", Asset("https://example.com/a.dmg", "0".repeat(64)), downloadFailed = true)
+                updateCheck = UpdateCheck.Downloaded("0.8.0", File("E-Signer-macos-arm64.dmg"))
+                openUpdate()
+            })
+            shot("$l-23d-update-failed", state(lang) { ready(); updateCheck = update.copy(downloadFailed = true); openUpdate() })
+            shot("$l-23e-update-manual", state(lang) { ready(); updateCheck = UpdateCheck.Available("0.8.0"); openUpdate() })
+            shot("$l-23f-sidebar-downloading", state(lang) {
+                ready()
+                updateCheck = UpdateCheck.Downloading("0.8.0", 43_712_512, 102_760_448)
             })
             shot("$l-18f-settings-no-card", state(lang) {
                 ready()
@@ -470,6 +477,13 @@ class ScreenshotTest {
             screen = Screen.WORKSPACE
             openAbout()
             updateCheck = UpdateCheck.Available("0.5.0")
+        }, dark = true)
+        shot("dark-23-update-downloading", state(Language.EN) {
+            scan = ScanState.Ready(CardScan(1, listOf(card)))
+            selectedSlot = 1
+            screen = Screen.WORKSPACE
+            updateCheck = UpdateCheck.Downloading("0.8.0", 43_712_512, 102_760_448)
+            openUpdate()
         }, dark = true)
         shot("dark-03-card-found", state(Language.EN) {
             scan = ScanState.Ready(CardScan(1, listOf(card)))

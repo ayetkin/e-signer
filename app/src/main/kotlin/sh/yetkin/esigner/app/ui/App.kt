@@ -58,6 +58,9 @@ fun App(state: AppState, pickFiles: () -> Unit, saveFile: (java.io.File) -> java
                 AnimatedVisibility(state.aboutOpen, enter = fadeIn(), exit = fadeOut()) {
                     AboutDialog(state)
                 }
+                AnimatedVisibility(state.updateOpen, enter = fadeIn(), exit = fadeOut()) {
+                    UpdateDialog(state)
+                }
             }
         }
     }

@@ -27,7 +27,7 @@ private val Padding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
 
 private fun Modifier.macButton(enabled: Boolean, minHeight: Dp = 36.dp) = handCursor(enabled).heightIn(min = minHeight)
 
-private val isMac = System.getProperty("os.name").startsWith("Mac")
+internal val isMac = System.getProperty("os.name").startsWith("Mac")
 
 /**
  * Raises the label on macOS: Skia's line box for San Francisco puts the glyphs about 1 pt below the middle of the

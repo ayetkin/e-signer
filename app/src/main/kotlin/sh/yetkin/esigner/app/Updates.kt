@@ -23,7 +23,8 @@ sealed interface UpdateCheck {
     data object UpToDate : UpdateCheck
     /** [asset]: this platform's package, downloaded in the app; without one the releases page is opened. */
     data class Available(val version: String, val asset: Asset? = null, val downloadFailed: Boolean = false) : UpdateCheck
-    data class Downloading(val version: String) : UpdateCheck
+    /** [total]: the package size in bytes, or -1 when GitHub does not say. */
+    data class Downloading(val version: String, val received: Long = 0, val total: Long = -1) : UpdateCheck
     data class Downloaded(val version: String, val file: File) : UpdateCheck
     data object Failed : UpdateCheck
 }
@@ -92,9 +93,16 @@ object Updates {
     /**
      * Downloads [asset] into [dir] and checks its SHA-256 before it gets its real name, so a broken or altered
      * download never sits there under the package name. A file already there with the same name is kept: it is
-     * returned when it is this package, otherwise the download gets a free name ("... (2).dmg").
+     * returned when it is this package, otherwise the download gets a free name ("... (2).dmg"). [onProgress] gets
+     * the bytes received so far and the total (-1 if unknown) on the downloading thread; throwing there stops it.
+     * [onOpen] gets a function that closes the connection from another thread, so a stalled read ends at once.
      */
-    fun download(asset: Asset, dir: File): File {
+    fun download(
+        asset: Asset,
+        dir: File,
+        onOpen: (close: () -> Unit) -> Unit = {},
+        onProgress: (received: Long, total: Long) -> Unit = { _, _ -> },
+    ): File {
         val existing = File(dir, asset.name)
         if (existing.isFile && sha256(existing.inputStream()) == asset.sha256) return existing
         val part = File(dir, asset.name + ".part")
@@ -103,9 +111,23 @@ object Updates {
         val connection = URI(asset.url).toURL().openConnection() as HttpURLConnection
         connection.connectTimeout = 10_000
         connection.readTimeout = 30_000
+        onOpen(connection::disconnect)
         try {
             if (connection.responseCode != 200) throw IOException("GitHub answered ${connection.responseCode}")
-            val sha256 = sha256(connection.inputStream) { input -> part.outputStream().use { input.copyTo(it) } }
+            val total = connection.contentLengthLong
+            val sha256 = sha256(connection.inputStream) { input ->
+                part.outputStream().use { out ->
+                    val buffer = ByteArray(64 * 1024)
+                    var received = 0L
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        out.write(buffer, 0, n)
+                        received += n
+                        onProgress(received, total)
+                    }
+                }
+            }
             if (sha256 != asset.sha256) throw IOException("${asset.name}: SHA-256 mismatch")
             val target = generateSequence(1) { it + 1 }
                 .map { n -> if (n == 1) existing else File(dir, "${existing.nameWithoutExtension} ($n).${existing.extension}") }
