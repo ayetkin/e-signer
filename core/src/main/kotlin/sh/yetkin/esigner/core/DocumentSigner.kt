@@ -19,8 +19,11 @@ import eu.europa.esig.dss.pades.SignatureFieldParameters
 import eu.europa.esig.dss.pades.SignatureImageParameters
 import eu.europa.esig.dss.pades.SignatureImageTextParameters
 import eu.europa.esig.dss.pades.signature.PAdESService
+import eu.europa.esig.dss.pades.signature.PAdESSignatureRequirementsChecker
+import eu.europa.esig.dss.pades.validation.PDFDocumentAnalyzer
 import eu.europa.esig.dss.signature.DocumentSignatureService
 import eu.europa.esig.dss.spi.validation.CertificateVerifier
+import eu.europa.esig.dss.spi.validation.executor.CompleteValidationContextExecutor
 import eu.europa.esig.dss.spi.x509.tsp.TSPSource
 import eu.europa.esig.dss.token.DSSPrivateKeyEntry
 import eu.europa.esig.dss.token.SignatureTokenConnection
@@ -70,18 +73,20 @@ class DocumentSigner(
         if (level.needsTimestamp && timestampSource == null) throw SigningException(SigningError.TIMESTAMP_NOT_CONFIGURED)
 
         // Created before the card signs, so an unwritable folder fails before a card signature and a paid timestamp.
+        // deleteOnExit: a hung card step never reaches the finally below.
         val temp = try {
-            File.createTempFile(".${output.name}.", ".tmp", output.absoluteFile.parentFile)
+            File.createTempFile(".${output.name}.", ".tmp", output.absoluteFile.parentFile).also { it.deleteOnExit() }
         } catch (e: Exception) {
             throw SigningException(SigningError.WRITE_FAILED, output.name, e)
         }
         try {
             val document = FileDocument(input)
             val signed = when (format) {
-                SignatureFormat.PADES -> signWith(
-                    PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
-                    document, padesParameters(key, input, stampAt), token, key,
-                )
+                SignatureFormat.PADES -> {
+                    val parameters = padesParameters(key, input, stampAt)
+                    if (level == SigningLevel.BASELINE_LT) checkEarlierSignatures(document, parameters, key)
+                    signWith(PAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } }, document, parameters, token, key)
+                }
                 SignatureFormat.CADES -> signWith(
                     CAdESService(verifier).apply { timestampSource?.let { setTspSource(it) } },
                     document, cadesParameters(key), token, key,
@@ -108,6 +113,39 @@ class DocumentSigner(
             throw cardError(e)
         }
         return fileStep(key) { service.signDocument(document, parameters, value) }
+    }
+
+    /**
+     * B-LT also extends the PDF's earlier signatures, and DSS refuses an invalid or revoked one only after the card
+     * signed and a timestamp was bought. The checks DSS 6.1 runs then on them (PAdESLevelBaselineT.extendSignatures,
+     * PAdESLevelBaselineLT.extendSignatures) run here first. An earlier signature without a timestamp also gets a
+     * document timestamp from DSS, a second paid one.
+     */
+    private fun checkEarlierSignatures(document: DSSDocument, parameters: PAdESSignatureParameters, key: DSSPrivateKeyEntry) {
+        val signatures = fileStep(key) {
+            PDFDocumentAnalyzer(document).apply {
+                setCertificateVerifier(verifier)
+                setValidationContextExecutor(CompleteValidationContextExecutor.INSTANCE)
+            }.signatures
+        }
+        if (signatures.isEmpty()) return
+        try {
+            fileStep(key) {
+                PAdESSignatureRequirementsChecker(verifier, parameters).apply {
+                    if (signatures.all { it.hasTProfile() }) {
+                        assertExtendToLTLevelPossible(signatures)
+                    } else {
+                        assertExtendToTLevelPossible(signatures)
+                        assertSigningCertificateIsValid(signatures)
+                    }
+                    assertSignaturesValid(signatures)
+                    assertCertificateChainValidForLTLevel(signatures)
+                }
+            }
+        } catch (e: SigningException) {
+            // fileStep keeps the signer's own revoked chain and missing revocation data; the rest is an earlier signature.
+            throw if (e.error == SigningError.FILE_UNSUPPORTED) SigningException(SigningError.EARLIER_SIGNATURE_INVALID, cause = e.cause) else e
+        }
     }
 
     private fun padesParameters(key: DSSPrivateKeyEntry, input: File, stampAt: StampPosition?) = PAdESSignatureParameters().apply {

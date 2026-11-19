@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.IntSize
 import sh.yetkin.esigner.app.MacGestures
 import java.awt.Cursor
 import kotlin.math.ceil
+import kotlin.math.sqrt
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -392,10 +393,9 @@ private fun PdfPage(
     wasFocused: () -> Boolean,
 ) {
     val page = pdf.pages[index]
-    // Rendered at the screen's pixel size (Retina included), so the page is never scaled up. Rounded up to a
-    // quarter so small width changes reuse the image, and capped so a deep zoom does not exhaust memory.
+    // Rendered at the screen's pixel size (Retina included); scaled up only past the caps in renderScale.
     val widthPx = with(LocalDensity.current) { width.toPx() }
-    val renderScale = renderScale(widthPx, page.shownWidth)
+    val renderScale = renderScale(widthPx, page.shownWidth, page.shownHeight)
     var image by remember(pdf, index) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(pdf, index, renderScale) {
         // While pinching, render only once the zoom settles; the previous image stays until then.
@@ -555,18 +555,26 @@ private val StampFont = FontFamily(Font("stamp-font", VisibleStamp.fontData))
  */
 private const val MAX_RENDER_PIXELS = 2560f
 
+/** Most pixels in one page image: an A4 page [MAX_RENDER_PIXELS] wide. Very tall pages hit this before the width cap. */
+private const val MAX_RENDER_AREA = MAX_RENDER_PIXELS * MAX_RENDER_PIXELS * 842f / 595f
+
 /**
- * Scale for a page [shownWidth] pt wide shown [widthPx] pixels wide: rounded up to a quarter, at least 0.5, and capped
- * at [MAX_RENDER_PIXELS] wide. The cap wins on very wide pages (over 5120 pt), where it is below 0.5.
+ * Scale for a [shownWidth] x [shownHeight] pt page shown [widthPx] pixels wide: rounded up to a quarter so small width
+ * changes reuse the image, at least 0.5, and capped at [MAX_RENDER_PIXELS] wide and [MAX_RENDER_AREA] pixels so a deep
+ * zoom does not exhaust memory. The caps win on very wide (over 5120 pt) or very tall pages, where they are below 0.5.
  */
-internal fun renderScale(widthPx: Float, shownWidth: Float): Float =
-    (ceil(widthPx / shownWidth * 4f) / 4f).coerceAtLeast(0.5f).coerceAtMost(MAX_RENDER_PIXELS / shownWidth)
+internal fun renderScale(widthPx: Float, shownWidth: Float, shownHeight: Float): Float =
+    (ceil(widthPx / shownWidth * 4f) / 4f).coerceAtLeast(0.5f)
+        .coerceAtMost(MAX_RENDER_PIXELS / shownWidth)
+        .coerceAtMost(sqrt(MAX_RENDER_AREA / (shownWidth * shownHeight)))
+
 private const val RERENDER_DELAY_MS = 200L
 
 /** Crop box size in points and rotation, read up front so the UI thread never waits on a render. */
 private class PageInfo(val width: Float, val height: Float, val rotation: Int) {
     /** Width on screen in points: rotated pages show their height across. */
     val shownWidth: Float get() = if (rotation % 180 == 0) width else height
+    val shownHeight: Float get() = if (rotation % 180 == 0) height else width
 
     val ratio: Float
         get() = (if (rotation % 180 == 0) width / height else height / width).takeIf { it.isFinite() && it > 0f } ?: A4_RATIO

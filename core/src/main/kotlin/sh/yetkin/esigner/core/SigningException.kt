@@ -33,7 +33,9 @@ enum class SigningError(val isCardError: Boolean, val stopsBatch: Boolean) {
     /** B-LT: certificate status (OCSP/CRL) could not be fetched for the signer or the TSA. */
     REVOCATION_UNAVAILABLE(false, stopsBatch = true),
     /** B-LT: the signing certificate or one of its issuers is revoked or suspended. */
-    CERTIFICATE_REVOKED(false, stopsBatch = true);
+    CERTIFICATE_REVOKED(false, stopsBatch = true),
+    /** B-LT: an earlier signature of the PDF is invalid or its signer's certificate expired or was revoked. */
+    EARLIER_SIGNATURE_INVALID(false);
 
     constructor(isCardError: Boolean) : this(isCardError, isCardError)
 }
@@ -74,7 +76,7 @@ internal fun cardError(e: Throwable): SigningException {
         "CKR_PIN_INCORRECT" in text -> SigningError.PIN_INCORRECT
         "CKR_PIN_LOCKED" in text -> SigningError.PIN_LOCKED
         "CKR_PIN_LEN_RANGE" in text -> SigningError.PIN_LENGTH
-        listOf("CKR_TOKEN_NOT_PRESENT", "CKR_DEVICE_REMOVED", "CKR_SLOT_ID_INVALID", "slotListIndex", "CKR_DEVICE_ERROR")
+        listOf("CKR_TOKEN_NOT_PRESENT", "CKR_DEVICE_REMOVED", "CKR_SLOT_ID_INVALID", "CKR_DEVICE_ERROR")
             .any { it in text } -> SigningError.CARD_NOT_FOUND
         else -> SigningError.CARD_FAILED
     }

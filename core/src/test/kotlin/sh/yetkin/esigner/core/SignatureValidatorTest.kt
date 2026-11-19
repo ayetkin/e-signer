@@ -20,10 +20,10 @@ class SignatureValidatorTest {
     @AfterTest
     fun cleanup() = dir.deleteRecursively().let { }
 
-    private fun signedPdf(qualified: Boolean = false, seal: Boolean = false): File {
+    private fun signedPdf(qualified: Boolean = false, seal: Boolean = false, using: DocumentSigner = signer): File {
         val input = File(dir, "doc.pdf").also { file -> PDDocument().use { it.addPage(PDPage()); it.save(file) } }
         val token = if (seal) TestKeys.sealToken() else if (qualified) TestKeys.qualifiedToken() else TestKeys.token()
-        return token.use { signer.sign(input, SignatureFormat.PADES, it, it.keys.single()) }
+        return token.use { using.sign(input, SignatureFormat.PADES, it, it.keys.single()) }
     }
 
     private fun signedImz(content: String): File {
@@ -145,15 +145,23 @@ class SignatureValidatorTest {
         assertFalse(check.isLegallyValid)
     }
 
-    @Test
-    fun `a later signature keeps the earlier one legally valid`() {
-        val first = signedPdf(qualified = true)
-        val second = TestKeys.qualifiedToken().use { signer.sign(first, SignatureFormat.PADES, it, it.keys.single()) }
+    /** Signs a PDF twice with [using]; both signatures must stay legally valid with no reported change. */
+    private fun assertBothSignaturesStayValid(using: DocumentSigner) {
+        val first = signedPdf(qualified = true, using = using)
+        val second = TestKeys.qualifiedToken().use { using.sign(first, SignatureFormat.PADES, it, it.keys.single()) }
         val checks = validator(TestKeys.qualifiedCertificate).validate(second).signatures
         assertEquals(2, checks.size)
         assertTrue(checks.all { it.isLegallyValid }, checks.joinToString { it.messages.joinToString() })
         assertTrue(checks.all { it.problems.isEmpty() }, checks.joinToString { it.problems.toString() })
     }
+
+    @Test
+    fun `a later signature keeps the earlier one legally valid`() = assertBothSignaturesStayValid(signer)
+
+    // Each signature draws a stamp, the second one beside the first; DSS must not count it as a visual change.
+    @Test
+    fun `a later visible signature keeps the earlier stamped one legally valid`() =
+        assertBothSignaturesStayValid(DocumentSigner(stamp = VisibleStamp("Electronically signed", TestKeys.stampIcon)))
 
     @Test
     fun `enveloped content can be extracted`() {

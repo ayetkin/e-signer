@@ -17,6 +17,12 @@ değişiklikler "Yayımlanmadı" başlığında toplanır; sürüm çıkarken ba
 
 ### Düzeltilenler
 
+- Çok uzun PDF sayfaları (tek sayfalık tarayıcı çıktısı gibi) önizlemede en fazla bir A4 sayfası kadar piksel
+  ile çiziliyor. Önceden böyle bir sayfa yüzlerce MB bellek isteyip uygulamayı kapatabiliyordu.
+- Uzun dönemli (B-LT) imzada PDF'teki önceki bir imza geçersizse ya da imzacısının sertifikasının süresi dolmuş
+  veya iptal edilmişse hata kart imzalamadan ve zaman damgası alınmadan, zaman damgalı seviyeyi öneren ayrı bir
+  mesajla veriliyor. Önceden dosya başına bir kart imzası ve ücretli zaman damgası harcanıyor, "dosya bozuk ya da
+  desteklenmiyor" hatası çıkıyordu.
 - Doğrulamada imzadan önce alınmış içerik zaman damgası artık imza zamanının kanıtı olarak gösterilmiyor.
   Önceden yalnızca içerik damgası olan bir imza "resmi zaman damgası" etiketi alıyordu.
 - 5120 pt'den geniş PDF sayfaları (plotter çizimi, afiş) önizlemede uygulamayı kapatmıyor.

@@ -17,6 +17,12 @@ and versions follow [Semantic Versioning](https://semver.org/). Unreleased chang
 
 ### Fixed
 
+- Very tall PDF pages (such as a one-page browser export) are drawn in the preview with at most as many pixels as
+  an A4 page. Before, such a page could need hundreds of MB and close the app.
+- In a long-term (B-LT) signature, an invalid earlier signature of the PDF, or an earlier signer's expired or revoked
+  certificate, is reported before the card signs and a timestamp is bought, with its own message that suggests the
+  timestamped level. Before, each such file used a card signature and a paid timestamp and showed "damaged or
+  unsupported file".
 - Verification no longer shows a content timestamp, made before signing, as proof of the signing time.
   Before, a signature with only a content timestamp got the "official timestamp" label.
 - PDF pages wider than 5120 pt (plotter drawings, posters) no longer close the app in the preview.

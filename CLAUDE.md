@@ -227,7 +227,7 @@ tools/package-mac.sh && open dist/mac/E-Signer.app
    ve üst/alt kenarlarına eklenen saydam alan (`ICON_RATIO` 0.7: simge yazı yüksekliğinin %70'i, `GAP_RATIO`).
    Yükseklik önizlemede kutunun köşesinden çekilerek 16-80 pt (varsayılan 30, `SigningSettings.stampHeight`, tüm
    PDF'ler için tek değer; ayar penceresinde de var). Önizleme sayfaları ekranın piksel genişliğinde çizilir (Retina
-   dahil, en fazla 4096 px). Yakınlaştırma: düğmeler, Ctrl/Cmd + kaydırma, trackpad pinch (%50-400).
+   dahil, en fazla 2560 px genişlik ve bu genişlikteki A4 kadar piksel; çok uzun sayfalar daha düşük çözünürlükte). Yakınlaştırma: düğmeler, Ctrl/Cmd + kaydırma, trackpad pinch (%50-400).
    **Pinch:** Java'da genel API yok; `MacGestures` JDK'nın macOS'a özel `com.apple.eawt.event` paketini reflection
    ile kullanır (derleme Linux'ta olduğu için). Çalıştırırken `--add-exports java.desktop/com.apple.eawt.event=ALL-UNNAMED`
    gerekir (run.sh, package-mac.sh, app/build.gradle.kts); yoksa sessizce devre dışı kalır.

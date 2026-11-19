@@ -7,7 +7,6 @@ import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField
 import org.apache.pdfbox.rendering.PDFRenderer
 import org.bouncycastle.cms.CMSSignedData
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 import javax.imageio.ImageIO
@@ -68,10 +67,7 @@ class DocumentSignerTest {
         val input = File(dir, "two-pages.pdf").also { file ->
             PDDocument().use { it.addPage(PDPage()); it.addPage(PDPage()); it.save(file) }
         }
-        val icon = ByteArrayOutputStream().also {
-            ImageIO.write(java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", it)
-        }.toByteArray()
-        val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", icon))
+        val stamped = DocumentSigner(stamp = VisibleStamp("Electronically signed", TestKeys.stampIcon))
         val first = stamped.sign(input, SignatureFormat.PADES, token, key)
         val second = stamped.sign(first, SignatureFormat.PADES, token, key, File(dir, "twice.pdf"))
         val raw = String(second.readBytes(), Charsets.ISO_8859_1)
